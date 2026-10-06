@@ -9,7 +9,8 @@ Sockets (all bound here; the gateway and viewer connect):
     estop  PULL    :5561   `ctl.estop` only. Polled (non-blocking) before every env.step and
                            every 5 ms inside every wait.
     pub    PUB     :5562   `sim.status`, `sim.estop_ack`, `sim.world`, `sim.episode_header`
-    pose   PUB     :5563   `pose` for the viewer, every control step while running
+    pose   PUB     :5563   `pose` for the viewer, every control step while running, plus
+                           `sim.episode_header` (repeated every 2 s, so late viewers get it)
 
 Threads: everything runs on the thread that calls `serve_forever` (or `run_*`), including
 all socket I/O. The only other thread is one policy worker that owns the policy client
@@ -72,7 +73,9 @@ from nod_protocol import (
     SimStatus,
     SimWorld,
     WorldRequest,
+    atoms_of,
     dumps,
+    holds,
     load_skills,
     loads,
     now_ms,
@@ -194,6 +197,7 @@ class SimRunner:
         world_every: int = 20,
         publish_poses: bool = True,
         actor: str = "policy",
+        allow_unverified_scripts: bool = True,
         context: zmq.Context | None = None,
     ) -> None:
         if actor not in ("policy", "scripted"):
@@ -211,6 +215,8 @@ class SimRunner:
         self.world_every = max(1, world_every)
         self.publish_poses = publish_poses
         self.actor = actor
+        # The live sim passes False so the T4 actor offers only stand-ins verified in LIBERO.
+        self.allow_unverified_scripts = allow_unverified_scripts
 
         specs = load_skills(registry) if registry and Path(registry).exists() else []
         self.specs = {s.skill_id: s for s in specs}
@@ -512,7 +518,7 @@ class SimRunner:
             return f"unknown goal_ref {msg.goal_ref}"
         if self.policy is None or self.actor == "scripted":
             try:
-                scripted_skill(msg.skill_id)
+                scripted_skill(msg.skill_id, self.allow_unverified_scripts)
             except ScriptError as exc:
                 return str(exc)
         return None
@@ -528,20 +534,37 @@ class SimRunner:
 
     def _publish_header(self) -> None:
         info = self.env.episode_info()
-        self._publish(
-            SimEpisodeHeader(
-                scene_id=info.scene_id,
-                model_hash=info.model_hash,
-                mj_ver=info.mj_ver,
-                body_names=info.body_names,
-                dyn_body_ids=info.dyn_body_ids,
-                model_patch=ModelPatch.model_validate(info.model_patch),
-            )
+        msg = SimEpisodeHeader(
+            scene_id=info.scene_id,
+            model_hash=info.model_hash,
+            mj_ver=info.mj_ver,
+            body_names=info.body_names,
+            dyn_body_ids=info.dyn_body_ids,
+            model_patch=ModelPatch.model_validate(info.model_patch),
         )
+        self._publish(msg)
+        # The viewer only subscribes to the pose socket: the header goes there too, and is
+        # repeated every HEADER_REPEAT_S so a viewer that joins late still gets the fixture patch.
+        self._header_bytes = dumps(msg)
+        self._send_header_on_pose()
+
+    HEADER_REPEAT_S = 2.0
+
+    def _send_header_on_pose(self) -> None:
+        hb = getattr(self, "_header_bytes", None)
+        if self._pose is None or hb is None:
+            return
+        try:
+            self._pose.send(hb, zmq.NOBLOCK)
+        except zmq.Again:
+            return
+        self._header_sent_at = time.monotonic()
 
     def _publish_pose(self) -> None:
         if not self.publish_poses or self._pose is None:
             return  # without sockets poses are not collected (they would dominate `published`)
+        if time.monotonic() - getattr(self, "_header_sent_at", 0.0) >= self.HEADER_REPEAT_S:
+            self._send_header_on_pose()
         xpos, xquat, qpos = self.env.body_poses()
         msg = Pose(epoch=self.epoch, step=self.sim_step, t_sim=float(self.env.t_sim), t_wall=time.time(),
                    xpos=xpos, xquat=xquat, qpos=qpos)
@@ -618,7 +641,7 @@ class SimRunner:
         self.env.set_skill(cmd.instruction, cmd.goal_ref)
         if use_script:
             try:
-                r.script = scripted_skill(cmd.skill_id)(self.env)
+                r.script = scripted_skill(cmd.skill_id, self.allow_unverified_scripts)(self.env)
             except ScriptError as exc:
                 r.phase, r.fault, r.error = "failed", None, str(exc)
                 return self._finish(r)
@@ -817,6 +840,16 @@ class SimRunner:
             r.success = bool(self.env.check_success())
             if not r.success:  # a scripted stand-in finished without reaching the goal
                 r.phase = "failed"
+        elif r.phase == "done" and r.kind == "scripted":
+            # A scripted motion with registry effects (close_middle_drawer, reset_scene) succeeds
+            # only if the oracle shows them; pure arm motions (return_home) succeed on arrival.
+            spec = self.specs.get(r.skill_id)
+            effects = list(spec.effects) if spec is not None else []
+            if effects:
+                atoms = {a: v for a in atoms_of(effects) if (v := self.env.eval_atom(a)) is not None}
+                r.success = all(holds(e, atoms) for e in effects)
+                if not r.success:
+                    r.phase, r.error = "failed", "scripted motion ended but its effects do not hold"
         self._publish_status(r)
         self._publish_world()
         wall = time.monotonic() - r.t0
@@ -851,19 +884,31 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--registry", default=os.environ.get("NOD_REGISTRY", str(DEFAULT_REGISTRY)))
     ap.add_argument("--record-dir", default=os.environ.get("NOD_RECORD_DIR"))
     ap.add_argument("--hz", type=float, default=CONTROL_HZ)
-    ap.add_argument("--hb-timeout-ms", type=int, default=500)
+    ap.add_argument("--hb-timeout-ms", type=int, default=500,
+                    help="pause a run when no ctl.hb arrives for this long; 0 disables (local tools, eval)")
     ap.add_argument("--policy-timeout-ms", type=int, default=2000)
     ap.add_argument("--lazy-cameras", action="store_true",
                     help="render policy cameras only when a chunk is requested (CPU); identical images")
+    ap.add_argument("--allow-unverified-scripts", action="store_true",
+                    help="let the scripted actor run stand-ins not verified in LIBERO (drawer, plate push)")
+    ap.add_argument("--fake-env", action="store_true",
+                    help="serve nod_sim.fakes.FakeEnv (kinematic CPU stand-in, no LIBERO) with the scripted "
+                         "actor: for the gateway-sim integration test and local runs without the simulator")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-    from .scene import make_session_env
-
-    env = make_session_env(args.scene, args.init_index, lazy_cameras=args.lazy_cameras)
     policy = None
+    if args.fake_env:
+        from .fakes import FakeEnv
+
+        env = FakeEnv(args.scene)
+        args.actor, args.policy = "scripted", "none"
+    else:
+        from .scene import make_session_env
+
+        env = make_session_env(args.scene, args.init_index, lazy_cameras=args.lazy_cameras)
     if args.policy != "none" and args.actor == "policy":
         from .policy import Gr00tPolicy
 
@@ -872,8 +917,9 @@ def main(argv: list[str] | None = None) -> None:
             log.warning("policy server %s is not answering yet; runs will fault policy_timeout until it is", args.policy)
     runner = SimRunner(env, policy, SimAddrs(args.ctl, args.estop, args.pub, args.pose), hz=args.hz,
                        registry=args.registry, scene_id=args.scene, init_index=args.init_index,
-                       hb_timeout_ms=args.hb_timeout_ms, policy_timeout_ms=args.policy_timeout_ms,
-                       record_dir=args.record_dir, actor=args.actor if policy is not None else "scripted")
+                       hb_timeout_ms=args.hb_timeout_ms or None, policy_timeout_ms=args.policy_timeout_ms,
+                       record_dir=args.record_dir, actor=args.actor if policy is not None else "scripted",
+                       allow_unverified_scripts=args.allow_unverified_scripts)
     log.info("sim runner serving %s (actor=%s)", args.scene, runner.actor)
     try:
         runner.serve_forever()

@@ -1,0 +1,122 @@
+# CI for everything that runs on a CPU without keys (design 4.6). GPU work (sim, GR00T, Cosmos)
+# is measured by the nightly job instead (nightly.yml).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.11"
+
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: make setup-protocol UV=uv
+      - name: Tests and schema check
+        run: make test-protocol
+
+  gateway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install (sim/.venv too, for the test against the real sim runner on FakeEnv)
+        run: make setup-gateway setup-sim UV=uv
+      - name: Tests (unit, validator properties, mock end-to-end with e-stop, real sim runner)
+        run: make test-gateway UV=uv
+      - name: Smoke test of the mock gateway process
+        run: make smoke
+
+  pwa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install dev tools
+        run: make setup-pwa
+      - name: Unit tests (gestures, calibration, UI, sockets, e-stop, protocol)
+        run: make test-pwa
+      - name: Browser end-to-end against the stub gateway
+        # Uses the Google Chrome that ships on GitHub's Ubuntu runners; nothing is downloaded.
+        run: CHROME_PATH="$(command -v google-chrome || command -v chromium)" make test-pwa-e2e
+
+  # The whole mock product in a browser: real PWA, real gateway in mock mode, keyboard fallback.
+  e2e:
+    name: mock end-to-end (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install
+        run: make setup-gateway setup-pwa UV=uv
+      - name: Menu, typed request, confirm, run to done, STOP mid-run, clear, presenter trace
+        run: CHROME_PATH="$(command -v google-chrome || command -v chromium)" make test-e2e UV=uv
+
+  sim-cpu:
+    name: sim, eval, training (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: make setup-sim setup-training UV=uv
+      - name: Sim tests (FakeEnv; LIBERO is not installed here)
+        run: make test-sim UV=uv
+      - name: Eval tests (nod_eval on FakeEnv)
+        run: make test-eval UV=uv
+      - name: Training tests (demo layout, LeRobot conversion)
+        run: make test-training UV=uv
+
+  viewer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: make setup-viewer UV=uv
+      - name: Tests (scene loading, pose feed, model_patch)
+        run: make test-viewer UV=uv
+
+  # Lint for the whole repo (one pinned ruff version) plus the infra tests.
+  infra:
+    name: lint and infra
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: make setup-infra UV=uv
+      - name: Lint (ruff, shellcheck, actionlint, compose config)
+        run: make lint UV=uv
+      - name: Tests (compose invariants, YAML, scripts, dry runs, .env.example, smoke script)
+        run: make test-infra

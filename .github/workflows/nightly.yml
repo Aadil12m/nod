@@ -1,0 +1,139 @@
+# Nightly reliability eval as a Nebius Serverless AI Job (design 3.1, 3.2; docs/runbooks/nightly.md).
+#
+# Disabled by default. The scheduled run does nothing until the repository variable
+# NOD_NIGHTLY_ENABLED is set to "true" (Settings > Secrets and variables > Actions > Variables),
+# so a fork or a repo without Nebius credentials never fails or spends money. A manual run
+# (workflow_dispatch) still needs the secrets below and fails early with a clear message without them.
+#
+# Secrets:   NEBIUS_SA_JSON   service account key file (nebius iam auth-public-key generate ...)
+#            NEBIUS_PROJECT_ID, NOD_EVAL_IMAGE, NOD_BUCKET_ID, NOD_HF_SECRET
+#            NOD_BUCKET_NAME, NOD_S3_ACCESS_KEY_ID, NOD_S3_SECRET_ACCESS_KEY  (to fetch stats.json)
+# Variables: NOD_NIGHTLY_ENABLED ("true" to enable the cron), NOD_EVAL_EPISODES (default 20),
+#            NOD_NIGHTLY_OPEN_PR ("true" to open a pull request with the new registry stats)
+name: nightly
+
+on:
+  schedule:
+    # 01:30 UTC. Avoids the possible 2026-10-07 06:00 UTC maintenance (job_nightly.sh also guards it).
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: "Image smoke test only (start GR00T, ping, exit)"
+        type: boolean
+        default: false
+      episodes:
+        description: "Episodes per skill and chain"
+        type: string
+        default: "20"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    if: github.event_name == 'workflow_dispatch' || vars.NOD_NIGHTLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      NEBIUS_PROJECT_ID: ${{ secrets.NEBIUS_PROJECT_ID }}
+      NOD_EVAL_IMAGE: ${{ secrets.NOD_EVAL_IMAGE }}
+      NOD_BUCKET_ID: ${{ secrets.NOD_BUCKET_ID }}
+      NOD_BUCKET_NAME: ${{ secrets.NOD_BUCKET_NAME }}
+      NOD_HF_SECRET: ${{ secrets.NOD_HF_SECRET }}
+      NOD_EVAL_EPISODES: ${{ inputs.episodes || vars.NOD_EVAL_EPISODES || '20' }}
+      NOD_GIT_SHA: ${{ github.sha }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.NOD_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NOD_S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: uk-south2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        env:
+          SA_JSON: ${{ secrets.NEBIUS_SA_JSON }}
+        run: |
+          missing=()
+          for v in NEBIUS_PROJECT_ID NOD_EVAL_IMAGE NOD_BUCKET_ID NOD_HF_SECRET SA_JSON; do
+            [[ -n "${!v:-}" ]] || missing+=("$v")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::error::missing secrets: ${missing[*]} (see docs/runbooks/nightly.md)"
+            exit 1
+          fi
+
+      - name: Install the Nebius CLI
+        run: |
+          curl -sSL https://artifacts.nebius.cloud/cli/install.sh | bash
+          echo "$HOME/.nebius/bin" >> "$GITHUB_PATH"
+
+      - name: Authenticate with the service account
+        env:
+          SA_JSON: ${{ secrets.NEBIUS_SA_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          # [unverified] non-interactive form, from docs/research/nebius-ops.md 2.1
+          nebius profile create --endpoint api.nebius.cloud --service-account-file "$RUNNER_TEMP/sa.json" \
+            --parent-id "$NEBIUS_PROJECT_ID" --profile ci
+          nebius profile activate ci || true
+          rm -f "$RUNNER_TEMP/sa.json"
+
+      - name: Run the eval job and wait
+        id: job
+        run: |
+          args=(--wait)
+          if [[ "${{ inputs.smoke }}" == "true" ]]; then
+            args+=(--smoke)
+          elif [[ -n "$NOD_BUCKET_NAME" && -n "$AWS_ACCESS_KEY_ID" ]]; then
+            args+=(--fetch-stats registry/stats/latest.json)
+          fi
+          infra/nebius/job_nightly.sh "${args[@]}"
+
+      - uses: astral-sh/setup-uv@v6
+        if: success() && hashFiles('registry/stats/latest.json') != ''
+
+      - name: Validate the new stats against nod_protocol.StatsFile
+        if: success() && inputs.smoke != true && hashFiles('registry/stats/latest.json') != ''
+        run: |
+          uv run --no-project --python 3.11 --with ./protocol python - <<'PY'
+          import pathlib
+          from nod_protocol import StatsFile
+          s = StatsFile.model_validate_json(pathlib.Path("registry/stats/latest.json").read_text())
+          assert not s.placeholder, "the fetched stats are still marked as a placeholder"
+          print("stats ok:", s.job_id, s.at)
+          PY
+
+      - name: Upload stats
+        if: always() && hashFiles('registry/stats/latest.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: nod-stats-${{ steps.job.outputs.date || github.run_id }}
+          path: registry/stats/latest.json
+          if-no-files-found: ignore
+
+      - name: Open a pull request with the new stats
+        if: success() && inputs.smoke != true && vars.NOD_NIGHTLY_OPEN_PR == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATE: ${{ steps.job.outputs.date }}
+          JOB_NAME: ${{ steps.job.outputs.job_name }}
+        run: |
+          if git diff --quiet -- registry/stats/latest.json; then
+            echo "stats unchanged"; exit 0
+          fi
+          branch="nightly/stats-$DATE"
+          git config user.name "nod-nightly"
+          git config user.email "nod-nightly@users.noreply.github.com"
+          git switch -c "$branch"
+          git add registry/stats/latest.json
+          git commit -m "Nightly stats $DATE ($JOB_NAME)"
+          git push --force origin "$branch"
+          gh pr create --base main --head "$branch" --title "Nightly stats $DATE" \
+            --body "Measured by Nebius Serverless Job $JOB_NAME at ${GITHUB_SHA}. See docs/runbooks/nightly.md." \
+            || echo "a pull request for $branch already exists"

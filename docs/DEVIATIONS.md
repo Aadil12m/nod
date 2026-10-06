@@ -253,3 +253,207 @@ gateway can import the package without numpy. ormsgpack is optional and used aut
   exact onnx-asr call shape for Parakeet, vLLM guided JSON for Cosmos (a 400 falls back to plain
   text parsing), and the Home Assistant entity and notify service names
   (`light.ceiling_lights`, `notify/persistent_notification`, both configurable).
+
+## Repo root, infra/, docker/, docs/runbooks/, .github/
+
+### Layout
+
+- The workflows live in `.github/workflows/` (where GitHub runs them), not `infra/github/workflows/`
+  as in the design 4.1 tree.
+- Extra files the design does not list: `ruff.toml` (root ruff settings for code without its own
+  ruff table; `gateway/` keeps its stricter config), `infra/nebius/lib.sh` (shared helpers, every
+  script has `--dry-run`), `infra/scripts/{fetch_mock.sh, mock.sh, smoke_mock.sh}`, `infra/tests/`
+  (pytest), `infra/requirements-test.txt`, `docker/fetch_ckpt.sh`, `docker/eval_entrypoint.sh`,
+  `recordings/README.md` and `docs/runbooks/day1-results.md` (the template design 8.7 refers to).
+- `docs/runbooks/nemotron_smoke.py` extends the design 8.6 script: it tests the full 7.4 schema
+  (identical to `nod_protocol.planner_response_format`, which a test checks) instead of the reduced
+  one, adds the `json_object` fallback mode of 7.5, validates each reply field by field, and takes
+  `--base-url`, `--modes`, `--models`, `--thinking` and `--out`. Its summary lines keep the
+  design's form ("valid 9/10, p50 ..., p95 ...").
+
+### compose.yaml (design 4.5)
+
+- Mock mode uses separate services `gateway-mock` and `viewer-mock` instead of giving `gateway`
+  and `viewer` both profiles. In mock mode the sim is the gateway's in-process MockRunner, so the
+  viewer must subscribe to `gateway-mock:5563` rather than `sim:5563`, and the mock gateway needs
+  `NOD_SIM_POSE_PUB=tcp://0.0.0.0:5563` so the viewer container can reach it.
+- Added profile `eval` (one nightly-style eval on the VM) and service healthchecks; `policy` waits
+  for `cosmos` to be healthy, which enforces "start cosmos before policy".
+- `homeassistant` publishes 8123 on 127.0.0.1 only (for onboarding through an SSH tunnel); the
+  design publishes nothing. Caddy also keeps 80 open for redirects, though the security group
+  allows only 22 and 443 (Caddy then uses the TLS-ALPN challenge on 443).
+- The sim service gets `NOD_RECORD_DIR=/data/runs/sim` and `NOD_ACTOR` (`scripted` selects the T4
+  fallback actor) from the sim runner's CLI.
+- `.env` is optional (`required: false`), so the mock profile runs without one.
+
+### Images (docker/)
+
+- The policy, sim and eval images pin Isaac-GR00T to commit `51d4c89f72fda44cbf77285c6a8114b52676b8a1`,
+  the full hash of the `51d4c89` the design was checked against (confirmed with `git ls-remote` on
+  2026-10-06, when it was still the repository HEAD). They use CUDA 12.8 devel/runtime on Ubuntu 24.04 like
+  Isaac-GR00T's own Dockerfile.
+- `setup_libero.sh` ends with a GPU smoke test that cannot run during `docker build`; the sim and
+  eval images cut that block off and the runbook (demo-day.md step 2) runs an EGL check on the VM.
+- Checkpoints are not baked into images. `docker/fetch_ckpt.sh` (the entrypoint of the policy and
+  eval images) downloads them into a volume on first start.
+- No image was built here (no daemon, no GPU). Only `docker compose config` was run.
+
+### Not verified here
+
+- Every Nebius CLI call (VM create, security groups, `nebius ai job create`, profile creation from
+  a service-account file in CI, the job state names) follows the nebius-ops research report and is
+  tested only in dry-run mode and against fake `nebius` and `aws` executables.
+- The GitHub workflows were checked with actionlint, not run on GitHub.
+- `eval/nod_eval` does not exist yet, so `docker/eval.Dockerfile` cannot build; the infra test
+  marks this as an expected failure until it lands.
+- The mock library release (`mock-v1`) has not been published, so `make fetch-mock` currently
+  reports that the release is missing; mock mode works without it.
+
+## sim/, viewer/, training/, eval/
+
+### Session and scene (design 1.2, 1.3, 4.2.4)
+
+- **Session BDDL.** The sim builds its one episode from `sim/bddl/nod/bring_the_bowl_to_me.bddl`,
+  the LIBERO-Goal scene plus one invisible table region `main_table_handover_region`
+  (x 0.08 to 0.16, y 0.06 to 0.14 in table coordinates), instead of from
+  `put_the_bowl_on_the_plate.bddl`. Without the region the custom skill's goal atom could not be
+  evaluated in the live session. `verify_single_scene()` checks that the ten LIBERO-Goal files
+  are identical outside their language and goal blocks and that ours differs only by the region
+  (BDDL `;` comments are ignored). Init states still come from `put_the_bowl_on_the_plate`.
+- **Own observation replica.** `LiberoSession` reproduces Isaac-GR00T `LiberoEnv`'s observation
+  and action conversion (51d4c89: keys, 180 degree image rotation, axis-angle state, gripper
+  rescale, binarize and invert) instead of importing `gr00t.eval.sim.LIBERO.libero_env`, so the sim
+  venv needs neither gr00t nor gymnasium. `skills.swap_skill` still accepts a real `LiberoEnv`.
+- **Torch-free init states.** `libero.libero.benchmark` imports torch only to load init states;
+  we read the task map module directly and unpickle the `.pruned_init` zip pickles with a
+  restricted unpickler (numpy only), falling back to `torch.load` when torch exists.
+- **Lazy cameras** (`LiberoSession` default; `--lazy-cameras` on the runner and nod_eval CLIs,
+  which default to robosuite's per-step camera observables): the two policy images are rendered
+  only when a chunk is requested. The images are the same; only CPU time changes.
+
+### Runner (design 3.3, 3.5.4 to 3.5.6, 5.3, 5.5, 5.6)
+
+- `SimRunner(env, policy, addrs, hz, *, registry, ...)` takes the env and the policy client as
+  arguments (the design's signature has no keywords); `addrs=None` runs without sockets (tests,
+  nod_eval) and `hz=None` runs unpaced.
+- **E-stop timing.** `sim.estop_ack.t_halt` is taken after the 4 controlled-stop steps, so
+  `t_halt - t_rx` includes them. Measured on the real scene on CPU at 20 Hz: 57 to 100 ms,
+  p50 76 ms over 6 stops. `stopped_at_step` is the sim step at which the stop was received.
+- **Controlled stop** holds the last gripper command (a carried object is not dropped; checked on
+  the real scene) and sends zero translation and rotation; it runs unpaced.
+- **Episode header on the pose socket.** `sim.episode_header` is published on the status PUB
+  (as designed) and also on the pose PUB, repeated every 2 s, because the viewer subscribes
+  only to the pose socket and must get the fixture placement even when it joins late.
+- **Limits.** The eef box check predicts `eef + 0.05 * action_xyz` and zeroes the translation of
+  that step; 3 consecutive violations fault `eef_out_of_box`. With the placeholder
+  `DEFAULT_EEF_BOX` (z max 1.35) the scripted bottle lift had to be lowered; the box should be
+  re-measured against GR00T's own trajectories on the GPU VM before it is tightened.
+- **Scripted runs report success** when the skill's registry effects hold afterwards (oracle),
+  like policy runs; `return_home` and other motions without effects succeed when they finish.
+- `--hb-timeout-ms 0` disables the heartbeat watchdog (local tools, eval); the live default stays
+  500 ms.
+- **Scripted actor (T4) safety.** The runner refuses scripted stand-ins that were not verified
+  in LIBERO unless `allow_unverified_scripts` is set; the CLI defaults to refusing. Verified:
+  bowl_on_plate, cheese_in_bowl, bowl_to_user, bowl_on_stove, bowl_on_cabinet (2/3),
+  bottle_on_cabinet, bottle_on_rack, return_home. Not working in LIBERO: open/close middle
+  drawer, plate_to_stove_front, and return_home or handover_retreat from the handover or
+  cabinet-top poses. A joint-space reset, or a handover region closer to the robot, would fix
+  the last one (finding for the team).
+
+### Recorder, mock library and scene (design 4.2.4, 4.2.5, 4.4)
+
+- `policy_cam.mp4` is optional (`EpisodeRecorder(video=True)`, needs imageio-ffmpeg) and off by
+  default, to keep the mock library small; `rerender.py` makes video from `sim_state` in
+  `poses.npz` at any resolution.
+- The seven recordings in `recordings/` come from the scripted actor, not GR00T (manifests say
+  `"actor": "scripted"`), all from one session so that one `model_patch` fits all of them.
+- **Scene file.** `export_scene.py` works in two steps (dump in the MuJoCo 3.3.1 sim venv,
+  compile in the MuJoCo 3.14 viewer venv) because an MJB is version specific. The compiled scene
+  is viewer-only: collision meshes dropped, textures shrunk to 256 px, untextured meshes over
+  3000 faces decimated with fast-simplification. Body and joint names and qpos layout are checked
+  against the sim, and forward kinematics on the saved file reproduce the sim's body positions to
+  3.3e-5 m. It is still 43 MB raw, so it ships gzipped as `scene_libero_goal_v1.mjb.gz`
+  (16.5 MB); the viewer loads `.gz` and falls back to `<name>.gz` when the `.mjb` path in
+  compose does not exist. `infra/scripts/fetch_mock.sh` checks for the `.mjb` name only.
+
+### Viewer (design 4.2.5)
+
+- mjviser tracks the first moving body by default (shifts the whole scene); the viewer turns
+  that off so overlays stay in world coordinates, and sets +z up and an initial camera.
+- No `ZMQ_CONFLATE` (headers share the socket): the SUB keeps a small queue and only the newest
+  pose of each wake-up is drawn.
+
+### Eval (design 4.2.5)
+
+- Added `--actor scripted` (T4 numbers, marked in the stats `_note`), `--policy-for
+  CHECKPOINT=URL` for the custom checkpoint, and `--frames` for the Cosmos frames. Skills whose
+  checkpoint has no server are skipped and chains cut before them; the nightly job therefore
+  reports chain B as two steps until a second server serves `bowl_to_user`.
+- `in_chain` counts chain steps after the first only (the first starts from a fresh table).
+- `median_s` is simulated time (steps / 20), which equals wall time in the live 20 Hz loop.
+- `cosmos_agree.py` uses its own stdlib HTTP client with the gateway's prompt suffix and reply
+  parser (copied, so the eval image does not need the gateway package).
+
+### Training (design 4.2.5)
+
+- `gen_demos.py` writes LIBERO/robomimic-style HDF5 with both `actions` (robosuite units) and
+  `actions_policy` (GR00T units, what the LeRobot data uses: gripper 1 = open), images in raw
+  renderer order; `to_lerobot.py` rotates them. Start states are mixed (table, plate, plate plus
+  cheese) because the registry says bowl_to_user is trained from both.
+- `to_lerobot.py` writes H.264 (the NVIDIA demo data is AV1) and does not write `stats.json`:
+  Isaac-GR00T's dataset factory generates it with fingerprints; our cross-check test does the
+  same. Mixing with the original LIBERO-Goal data happens in `finetune.sh` through
+  launch_finetune's `:`-separated dataset paths.
+
+### docs/runbooks/chain_test.py
+
+- Copied verbatim from design 8.4 (extracted programmatically, compiles), plus one added line,
+  `# ruff: noqa: E401, E741`, because `make lint` runs ruff on docs/runbooks and the design's
+  code has `import argparse, json, os, time` and a variable named `l`. Its LIBERO imports and
+  task fields were checked against LIBERO 8f1084e; no provable bug was found, so nothing was
+  changed. It was not run (needs gr00t, torch and a policy server). One edge case remains: the
+  summary's `l.max()` raises if no policy call happened (every skill `already_true`).
+
+## Integration (whole repo)
+
+Changes made while wiring the areas together. Bug fixes are listed so other agents know the
+behaviour changed.
+
+- **`state.estop_seq` on the ESTOPPED state (gateway bug fix).** `SafetyChannel` latched the
+  session before recording the client's `estop_seq`, so the `state` message that announces
+  ESTOPPED carried the previous number (0 on the first stop). The phone and the presenter compare
+  `state.estop_seq` with their own stop number (pwa/ section above), so the gateway now records
+  the number first. Forwarding to the sim still happens before both.
+- **Presenter "E-stop (last)" tile.** The gateway sends `estop.ack` only to the peer that sent the
+  stop; it is not mirrored to `/ws/presenter`. The presenter page now also fills the tile from
+  the `trace` of kind `estop` with `acked: true` (it carries the same `lat_ms` split), instead of
+  the gateway mirroring another peer's ack, whose `estop_seq` could collide with the
+  presenter's own numbering.
+- **MockRunner and the viewer.** The MockRunner now behaves like `nod_sim.runner` towards the
+  viewer: it publishes `sim.episode_header` on the status and the pose socket at start, on
+  `ctl.load_scene` and every 2 s, filled from the mock library (`model_patch.json`,
+  `body_names`, `model_hash` of the recordings; all recordings come from one session). Before,
+  the header had an empty patch, so the viewer drew fixtures in their unpatched places. Scripted
+  runs (`return_home`) now replay a recording too when the library has one, and between runs the
+  last replayed pose is held instead of publishing empty arrays. The viewer ignores a pose with
+  zero bodies ("no pose yet") instead of logging a warning 20 times a second.
+- **`python -m nod_sim.runner --fake-env`.** Serves `nod_sim.fakes.FakeEnv` with the scripted
+  actor and no policy. Used by `gateway/tests/test_real_sim_runner.py`, which runs the gateway's
+  real `SimLink` against the real `SimRunner` in its own process (plan step to done with the
+  runner's oracle, e-stop with the sim's own `sim.estop_ack`, heartbeat-loss pause). Mock mode
+  is unchanged: it still uses the in-process MockRunner.
+- **The scene file name.** `infra/scripts/mock.sh` and `fetch_mock.sh` accept
+  `recordings/scene_libero_goal_v1.mjb.gz` as well as `.mjb` (the mock library ships the
+  gzipped file; the viewer falls back to it by itself). Compose and the viewer image keep the
+  `.mjb` path, which the viewer resolves to `.mjb.gz`.
+- **Makefile and CI.** `make test` now also runs the stub-gateway browser test, the full mock
+  end-to-end (`pwa/tests/e2e_full.mjs`, target `test-e2e`), eval, viewer and training, and every
+  `test-*` target creates the venv or `node_modules` it needs on first use. New targets:
+  `setup-viewer`, `setup-training`, `test-eval`, `test-viewer`, `test-training`, `test-e2e`,
+  `screenshots`. `make lint` covers viewer, eval and training. CI gained an `e2e` job and a
+  `viewer` job; the `sim-cpu` job also runs eval and training; the gateway job installs
+  `sim/.venv` so the real-sim-runner test runs.
+- **Plan steps keep the plan's ids.** Observed, not changed: the `run` messages of plan step 2
+  and later carry the original plan proposal's `proposal_id` and `option_id` (not the id of the
+  "Step 2 of 3" proposal that was confirmed); `plan_step` tells the steps apart. The full
+  end-to-end test relies on `plan_step`.

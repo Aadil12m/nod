@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nod-eval"
+version = "0.1.0"
+description = "Nod nightly eval: skills alone and in chains on the LIBERO-Goal session, stats.json, Cosmos agreement"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+# Installed with --no-deps into the GR00T LIBERO venv in docker/eval.Dockerfile; these are
+# what it imports (nod-sim brings the runner, LIBERO itself comes from that venv).
+dependencies = ["nod-protocol", "nod-sim", "numpy>=1.24"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pillow>=10"]
+
+[project.scripts]
+nod-eval = "nod_eval.run:main"
+nod-eval-publish = "nod_eval.publish:main"
+nod-eval-cosmos = "nod_eval.cosmos_agree:main"
+
+[tool.setuptools]
+packages = ["nod_eval"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

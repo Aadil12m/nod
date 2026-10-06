@@ -47,7 +47,17 @@ Query parameters: `nocam=1`, `gw=wss://host` (gateway elsewhere), `role=caregive
 npm test                 # node --test: gestures, calibration, UI machine, sockets, e-stop, protocol, audio
 node tests/e2e.mjs       # Chromium + the real app + stub gateway: menu, focus, long-blink confirm, STOP latch
 node tests/face_e2e.mjs  # optional: real MediaPipe on a fake camera (needs vendor/ and one download)
+node tests/e2e_full.mjs  # Chromium + the real app + the REAL gateway in mock mode (needs gateway/.venv)
 ```
+
+`tests/e2e_full.mjs` (`make test-e2e`) starts `nod-gateway --mock` on free ports and drives the
+phone with the keyboard: B opens the menu, a typed "I'm a bit hungry" brings the planner's
+options, Right/Left move focus, a held Enter confirms the snack plan and step 1 runs to done; step
+2 is confirmed and Space stops it mid-run (STOPPED latch, `estop.ack`, run aborted), and a long
+blink on "Clear stop?" returns to IDLE without resuming. The presenter page, open throughout,
+must have received the trace. It captures every WebSocket frame through Playwright and reads the
+gateway's own state from `/api/dev/state`. `--screenshots DIR` (`make screenshots`) saves the
+four images in `docs/screenshots/`.
 
 The gesture tests use synthetic traces generated in the tests (`tests/synth.mjs`): 10 minutes of
 natural blinking and talking must give zero confirms and zero stops at 15, 24 and 30 fps.

@@ -135,9 +135,11 @@ class SafetyChannel:
         p = PendingEStop(seq, peer, client_seq, source, t_rx, t_sent, self._phone_gw(t_rx, t_phone_send))
         p.t_fwd_ms = (t_sent - t_rx) if t_sent is not None else 0.0
         self.pending[seq] = p
-        self.session.latch_estop(source)
+        # Record the client's number before latching, so the ESTOPPED `state` the latch sends
+        # already carries it (the phone and presenter compare `state.estop_seq` with their own).
         if client_seq is not None:
             self.session.on_estop_seq(client_seq)
+        self.session.latch_estop(source)
         if self.metrics is not None:
             self.metrics.add("estop_gw_fwd_ms", p.t_fwd_ms)
         if self.presenter is not None:

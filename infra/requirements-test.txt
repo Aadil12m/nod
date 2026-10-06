@@ -1,0 +1,7 @@
+# infra/tests and `make lint`. Installed into infra/.venv by `make setup-infra`.
+pytest>=8
+pyyaml>=6
+openai>=1.40          # docs/runbooks/nemotron_smoke.py, exercised against a local stub server
+shellcheck-py>=0.10   # shellcheck binary as a wheel
+actionlint-py>=1.7    # GitHub Actions workflow linter as a wheel
+ruff==0.15.20

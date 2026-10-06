@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nod-viewer"
+version = "0.1.0"
+description = "Nod 3D viewer: the sim's pose stream drawn in the browser with mjviser/viser, plus the scene exporter"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+# Versions the streaming report tested. The viewer runs MuJoCo 3.14 while the sim is pinned to
+# 3.3.1, which is why it is its own process and image.
+dependencies = [
+  "nod-protocol",          # ../protocol (pip install -e "../protocol[numpy,fast]")
+  "mujoco>=3.6",
+  "mjviser>=0.0.14",
+  "viser>=1.1",
+  "pyzmq>=25",
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# export_scene.py compile: texture shrinking and mesh decimation for the slim viewer MJB.
+export = ["pillow>=10", "trimesh>=4", "fast-simplification>=0.1.7"]
+test = ["pytest>=8", "pillow>=10", "websockets>=12"]
+
+[project.scripts]
+nod-viewer = "nod_viewer.main:main"
+
+[tool.setuptools]
+packages = ["nod_viewer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

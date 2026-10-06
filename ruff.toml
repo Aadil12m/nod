@@ -1,0 +1,12 @@
+# Root ruff settings for code without its own [tool.ruff] table (protocol/, sim/, infra/,
+# docs/runbooks/). gateway/ keeps its stricter settings in gateway/pyproject.toml.
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "**/.venv", "**/node_modules", "pwa/vendor", "protocol/schema"]
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]  # long lines are allowed where the design's tables and schemas are copied verbatim
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]  # re-exports

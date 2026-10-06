@@ -112,6 +112,8 @@ services:
       - PYOPENGL_PLATFORM=egl
       - MUJOCO_EGL_DEVICE_ID=0
       - NVIDIA_DRIVER_CAPABILITIES=all
+      - NOD_RECORD_DIR=/data/runs/sim      # per-run recordings; they also feed the mock library
+      - NOD_ACTOR=${NOD_ACTOR:-policy}     # scripted = fallback tier T4 (design 1.6)
     command: ["python", "-m", "nod_sim.runner", "--policy", "tcp://policy:5555"]
     volumes:
       - runs:/data/runs                    # per-run recordings (poses.npz, manifest.json, ...)

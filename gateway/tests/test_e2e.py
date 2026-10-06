@@ -90,7 +90,8 @@ async def test_estop_mid_run_aborted_never_resumed(tmp_path):
         assert ack["lat_ms"]["gw_sim"] is not None and ack["lat_ms"]["sim_halt"] is not None
         assert ack["lat_ms"]["sim_halt"] <= 50  # one control step
         await phone.wait(lambda m: m["type"] == "run" and m["run_id"] == rid and m["phase"] == "aborted")
-        await phone.wait_type("state", mode="ESTOPPED")
+        st = await phone.wait_type("state", mode="ESTOPPED")
+        assert st["estop_seq"] == 3  # the phone and presenter compare this with their own number
         # the phone resends until acked: duplicates do not stop the sim again but are re-acked
         await safety.send("estop", estop_seq=3, source="jaw_hold", t_detect=run["ts"], held_ms=310)
         await safety.wait_type("estop.ack", estop_seq=3)

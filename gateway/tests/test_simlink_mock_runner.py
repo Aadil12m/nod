@@ -10,7 +10,17 @@ import numpy as np
 import pytest
 import zmq
 from conftest import SKILLS, sim_addrs
-from nod_protocol import Pose, RunScripted, RunSkill, SimEStopAck, SimStatus, WorldState, loads, new_id
+from nod_protocol import (
+    Pose,
+    RunScripted,
+    RunSkill,
+    SimEpisodeHeader,
+    SimEStopAck,
+    SimStatus,
+    WorldState,
+    loads,
+    new_id,
+)
 
 from nod_gateway.mock_runner import PLACEHOLDER_JPEG, MockRunner, scan_library
 from nod_gateway.simlink import SimError, SimLink
@@ -252,7 +262,21 @@ async def test_library_replay(tmp_path):
         xquat=np.tile(np.array([1, 0, 0, 0], np.float32), (T, nb, 1)),
         qpos=np.zeros((T, nq), np.float32),
     )
-    (rec / "manifest.json").write_text(json.dumps({"skill_id": "bowl_on_plate", "outcome": "success", "steps": T}))
+    names = ["world", "table", "bowl"]
+    (rec / "manifest.json").write_text(
+        json.dumps(
+            {
+                "skill_id": "bowl_on_plate",
+                "outcome": "success",
+                "steps": T,
+                "model_hash": "sha256:x",
+                "mj_ver": "3.3.1",
+                "body_names": names,
+                "dyn_body_ids": [2],
+            }
+        )
+    )
+    (rec / "model_patch.json").write_text(json.dumps({"body_pos": {"table": [0.0, 0.0, 0.875]}, "body_quat": {}}))
     lib = scan_library(tmp_path / "lib")
     assert len(lib) == 1 and lib[0].success and lib[0].steps == T
     a = sim_addrs()
@@ -283,12 +307,27 @@ async def test_library_replay(tmp_path):
         await link.run(cmd)
         st = await statuses(link, cmd.run_id, {"done"})
         assert st[-1].step == T  # the recording's length, not the scripted 50
-        shapes = set()
-        for _ in range(50):
-            if not sub.poll(100):
+        shapes, headers = set(), []
+        for _ in range(400):
+            if not sub.poll(100) or ((nb, 3) in shapes and headers):
                 break
-            shapes.add(loads(sub.recv()).xpos.shape)
+            msg = loads(sub.recv())
+            if isinstance(msg, SimEpisodeHeader):
+                headers.append(msg)
+            else:
+                shapes.add(msg.xpos.shape)
         assert (nb, 3) in shapes
+        # The viewer subscribes only to the pose socket: the header with the library's
+        # fixture placement must arrive there too (as nod_sim.runner does).
+        assert headers, "no sim.episode_header on the pose socket"
+        assert headers[0].body_names == names and headers[0].model_hash == "sha256:x"
+        assert tuple(headers[0].model_patch.body_pos["table"]) == (0.0, 0.0, 0.875)
+        # After the run the last recorded pose is held, not replaced by empty arrays.
+        await asyncio.sleep(0.1)
+        for _ in range(20):
+            msg = loads(sub.recv())
+            if isinstance(msg, Pose):
+                assert msg.xpos.shape == (nb, 3)
     finally:
         sub.close(0)
         await link.close()

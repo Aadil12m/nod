@@ -14,8 +14,13 @@ Behaviour:
   * Honours ctl.pause / ctl.resume / ctl.abort and the epoch; sim-side heartbeat watchdog:
     no `ctl.hb` for `hb_timeout_ms` while executing -> controlled stop, `paused`, `hb_lost`.
   * Publishes `sim.status` (10 Hz while a run is active, and on every phase change),
-    `sim.world` (2 Hz and on change), `sim.estop_ack`, and `pose` every tick (empty arrays
-    when no recording is being replayed).
+    `sim.world` (2 Hz and on change), `sim.estop_ack`, and `pose` every tick. Between runs the
+    last replayed pose is held, so the viewer keeps showing where the arm stopped; before any
+    recording was replayed the arrays are empty (the viewer ignores those).
+  * Publishes `sim.episode_header` on the status AND the pose socket at start, on
+    `ctl.load_scene` and every 2 s (as `nod_sim.runner` does), so a viewer that joins late still
+    gets the fixture placement. With a library the header carries the recordings' `model_patch`,
+    `body_names` and `model_hash` (one library comes from one session, so one patch fits all).
 """
 
 from __future__ import annotations
@@ -92,6 +97,7 @@ _OBJ_POS = {
     "flat_stove_1": (-0.10, 0.25, 0.90),
 }
 HOME_EEF = (-0.21, 0.02, 1.12)
+HEADER_PERIOD_S = 2.0  # sim.episode_header repeat, as in nod_sim.runner
 
 
 @dataclass
@@ -128,6 +134,28 @@ def scan_library(library: Path | None) -> list[Recording]:
         except (KeyError, ValueError, json.JSONDecodeError) as exc:
             log.warning("skipping recording %s: %s", man, exc)
     return out
+
+
+def library_header(library: Path | None, scene_id: str) -> SimEpisodeHeader:
+    """The episode header for a mock library: model_patch and body names of its recordings."""
+    if library is not None and Path(library).exists():
+        for man in sorted(Path(library).glob("**/manifest.json")):
+            patch = man.parent / "model_patch.json"
+            if not patch.exists():
+                continue
+            try:
+                m = json.loads(man.read_text())
+                return SimEpisodeHeader(
+                    scene_id=m.get("scene_id", scene_id),
+                    model_hash=m.get("model_hash", "mock"),
+                    mj_ver=m.get("mj_ver", "mock"),
+                    body_names=list(m.get("body_names", [])),
+                    dyn_body_ids=list(m.get("dyn_body_ids", [])),
+                    model_patch=json.loads(patch.read_text()),
+                )
+            except (ValueError, json.JSONDecodeError) as exc:
+                log.warning("no episode header from %s: %s", man.parent, exc)
+    return SimEpisodeHeader(scene_id=scene_id, model_hash="mock", mj_ver="mock", body_names=[], dyn_body_ids=[])
 
 
 @dataclass
@@ -171,6 +199,9 @@ class MockRunner:
         self.rng = random.Random(seed)
         self.hb_timeout_ms = hb_timeout_ms
         self.library = scan_library(library)
+        self.header = library_header(library, scene_id)
+        self._last_pose: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
+        self._header_at = 0.0
         specs = load_skills(registry) if registry else []
         self.specs = {s.skill_id: s for s in specs}
         self.script_effects = {s.scripted.script: s.effects for s in specs if s.scripted is not None}
@@ -230,6 +261,8 @@ class MockRunner:
                 if tick % 10 == 0 or self._world_dirty:
                     self._publish_world()
                 self._publish_pose()
+                if time.monotonic() - self._header_at >= HEADER_PERIOD_S:
+                    self._publish_header()
                 tick += 1
                 next_t += period
                 # Pacing wait that wakes on e-stop or ctl traffic (5.5: the wait never delays a stop).
@@ -285,12 +318,20 @@ class MockRunner:
         if self.run is not None:
             self._send_pub(self._status(self.run))
 
+    def _publish_header(self) -> None:
+        self._header_at = time.monotonic()
+        data = dumps(self.header)
+        self._pub.send(data)
+        self._pose.send(data)
+
     def _publish_pose(self) -> None:
         r = self.run
         if r is not None and r.recording is not None:
             p = r.recording.load()
             i = min(r.step, len(p["xpos"]) - 1)
-            xpos, xquat, qpos = p["xpos"][i], p["xquat"][i], p["qpos"][i]
+            self._last_pose = (p["xpos"][i], p["xquat"][i], p["qpos"][i])
+        if self._last_pose is not None:
+            xpos, xquat, qpos = self._last_pose
         else:
             xpos, xquat, qpos = np.zeros((0, 3), np.float32), np.zeros((0, 4), np.float32), np.zeros((0,), np.float32)
         msg = Pose(
@@ -409,11 +450,7 @@ class MockRunner:
             self.eef, self.gripper = list(HOME_EEF), "open"
             self._world_dirty = True
             self._ack(ident, msg.req_id, True)
-            self._send_pub(
-                SimEpisodeHeader(
-                    scene_id=self.scene_id, model_hash="mock", mj_ver="mock", body_names=[], dyn_body_ids=[]
-                )
-            )
+            self._publish_header()
         elif isinstance(msg, (RunSkill, RunScripted)):
             self._start_run(ident, msg)
         elif isinstance(msg, Pause):
@@ -475,14 +512,16 @@ class MockRunner:
             )
         else:
             effects = list(self.script_effects.get(msg.script, []))
+            rec = next((r for r in self.library if r.skill_id == msg.script and r.success), None)
             run = _Run(
                 msg.run_id,
                 msg.script,
                 "scripted",
                 effects,
                 msg.max_steps,
-                min(max(1, self.steps // 2), msg.max_steps),
+                min((rec.steps if rec and rec.steps else max(1, self.steps // 2)), msg.max_steps),
                 True,
+                recording=rec,
             )
         self.run = run
         self.last_hb = time.monotonic() if self.last_hb == 0.0 else self.last_hb

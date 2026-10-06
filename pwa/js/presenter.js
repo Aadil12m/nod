@@ -51,7 +51,12 @@ function summarize(data) {
 function onMessage(m) {
   switch (m.type) {
     case 'pong': clock.onPong(m); break;
-    case 'trace': addTrace(m.kind, m.ref, summarize(m.data)); break;
+    case 'trace':
+      addTrace(m.kind, m.ref, summarize(m.data));
+      // The gateway acks a stop to the peer that sent it; every other stop reaches this page as an
+      // "estop" trace with the same latency split, which feeds the "E-stop (last)" tile.
+      if (m.kind === 'estop' && m.data?.acked && m.data.lat_ms) S.lastEstop = { estop_seq: m.data.client_seq, lat_ms: m.data.lat_ms };
+      break;
     case 'metrics': S.metrics = m; break;
     case 'cosmos.check': addTrace('cosmos', m.check_id, `${m.phase} ${m.skill_id}: ${m.question}`); break;
     case 'cosmos.result': addTrace('cosmos', m.check_id, `${m.answer} (${ms(m.latency_ms)}) ${m.decision}${m.agree === false ? ' DISAGREES with oracle' : ''}: ${m.reason}`); break;

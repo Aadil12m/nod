@@ -91,7 +91,9 @@ def test_estop_forwards_to_sim_before_latching(rig):
     ch, sim, sess, hb, clock, peer, log, _ = rig
     ch.on_estop(estop(), peer)
     assert log[0] == ("sim.estop", 1)  # the gateway's own seq goes to the sim, first
-    assert log[1] == ("session.latch", "jaw_hold")
+    # The client's number is recorded before the latch, so the ESTOPPED `state` carries it.
+    assert log[1] == ("session.seq", 3)
+    assert log[2] == ("session.latch", "jaw_hold")
     assert sess.mode == "ESTOPPED"
 
 
