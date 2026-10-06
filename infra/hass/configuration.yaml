@@ -1,0 +1,62 @@
+# Home Assistant for Nod (design 3.1, 2.2): demo light entities and a caregiver notification.
+# Mounted at /config by the `homeassistant` service (profiles live and hass). Home Assistant
+# writes its runtime state (.storage/, the database, logs) next to this file; those files are
+# git-ignored by infra/hass/.gitignore.
+#
+# The gateway calls the REST API (gateway/nod_gateway/home/hass.py):
+#   lights_on / lights_off -> POST /api/services/light/turn_on|turn_off {"entity_id": NOD_HASS_LIGHT_ENTITY}
+#   call_caregiver         -> POST /api/services/notify/<NOD_HASS_NOTIFY_SERVICE>
+# Defaults: NOD_HASS_LIGHT_ENTITY=light.ceiling_lights (a demo light) and
+# NOD_HASS_NOTIFY_SERVICE=persistent_notification (shows in the HA sidebar). Point the notify
+# service at a phone (Companion app, notify.mobile_app_<device>) for a real caregiver alert.
+#
+# First run: open http://127.0.0.1:8123 (through `ssh -L 8123:127.0.0.1:8123 nod@$VM_IP` on the
+# VM), create the owner account, then Profile > Security > Long-lived access tokens, and put the
+# token in .env as NOD_HASS_TOKEN. See docs/runbooks/demo-day.md.
+
+homeassistant:
+  name: Nod demo home
+  unit_system: metric
+  time_zone: Etc/UTC
+  # No location or external URL: this instance never needs to be reachable from outside.
+
+# Minimal integrations instead of default_config: no cloud, discovery or analytics.
+frontend:
+config:
+api:
+http:
+  server_port: 8123
+logger:
+  default: warning
+  logs:
+    homeassistant.components.api: info
+    homeassistant.components.notify: info
+
+# The demo integration provides the light entities (light.ceiling_lights, light.kitchen_lights,
+# light.bed_light, ...) and other demo devices. It is HA's documented way to get fake devices.
+demo:
+
+# notify.persistent_notification (the default caregiver target) is built in; nothing to add.
+
+# A visible record of caregiver calls on the HA dashboard.
+input_datetime:
+  nod_last_caregiver_call:
+    name: Nod last caregiver call
+    has_date: true
+    has_time: true
+
+automation:
+  - id: nod_caregiver_call_log
+    alias: Nod caregiver call log
+    description: Records the time of every caregiver notification sent by the Nod gateway.
+    triggers:
+      - trigger: event
+        event_type: call_service
+        event_data:
+          domain: notify
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.nod_last_caregiver_call
+        data:
+          timestamp: "{{ now().timestamp() }}"

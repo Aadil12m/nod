@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nod-gateway"
+version = "0.1.0"
+description = "Nod gateway: session state machine, e-stop fast path, validator, planner/ASR/Cosmos/Home clients, sim link and mock runner"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+  "nod-protocol",                 # ../protocol, installed editable (see README)
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.4",
+  "pyzmq>=26",
+  "httpx>=0.27",
+  "openai>=1.40",                 # Token Factory and vLLM are OpenAI-compatible
+  "numpy>=1.24",                  # mock runner pose arrays, ASR audio
+]
+
+[project.optional-dependencies]
+asr = ["onnx-asr[cpu,hub]>=0.12"]   # Parakeet TDT 0.6B v3 int8 on CPU (live mode only)
+test = ["pytest>=8", "pytest-asyncio>=0.24", "hypothesis>=6.100", "websockets>=13", "ruff>=0.6"]
+
+[project.scripts]
+nod-gateway = "nod_gateway.cli:main"
+
+[tool.setuptools]
+packages = ["nod_gateway", "nod_gateway.planner", "nod_gateway.asr", "nod_gateway.cosmos", "nod_gateway.home"]
+
+[tool.setuptools.package-data]
+nod_gateway = ["py.typed"]
+"nod_gateway.planner" = ["prompts/*.md", "canned/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning:websockets.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC"]
+ignore = ["RUF001", "RUF002", "RUF003", "SIM105", "B008", "ASYNC109"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "SIM117", "RUF059"]

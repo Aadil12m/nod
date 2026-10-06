@@ -1,0 +1,40 @@
+# Caddy TLS front for the live profile (design 3.1, 3.2). Mounted at /etc/caddy/Caddyfile.
+#
+# Host names come from .env (create_vm.sh prints them):
+#   NOD_DOMAIN=nod.<ip-dashed>.sslip.io     -> gateway:8000  (phone PWA, presenter, /ws/*)
+#   VIEW_DOMAIN=view.<ip-dashed>.sslip.io   -> viewer:8080   (viser 3D view, WebSocket)
+#
+# Certificates come from Let's Encrypt, with ZeroSSL as Caddy's automatic fallback. With only
+# port 443 open in the security group, Caddy uses the TLS-ALPN-01 challenge. That sslip.io host
+# names get certificates reliably is [unverified] (design 10.2); the fallback is a Nebius Tunnel.
+# Certificates persist in the caddy_data volume; do not delete it (rate limits).
+#
+# Caddy proxies WebSocket upgrades on reverse_proxy without extra configuration.
+
+{$NOD_DOMAIN:nod.localhost} {
+	# Low latency for the event and safety sockets: no response buffering.
+	reverse_proxy gateway:8000 {
+		flush_interval -1
+	}
+	header {
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		# Camera and microphone for this origin only (the PWA needs both).
+		Permissions-Policy "camera=(self), microphone=(self)"
+	}
+	log {
+		output stdout
+		format console
+	}
+}
+
+{$VIEW_DOMAIN:view.localhost} {
+	reverse_proxy viewer:8080 {
+		flush_interval -1
+	}
+	header {
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options nosniff
+	}
+}

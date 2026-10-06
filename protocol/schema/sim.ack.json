@@ -1,0 +1,46 @@
+{
+  "$id": "https://nod.invalid/schema/sim.ack.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "sim.ack",
+      "default": "sim.ack",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "ok",
+    "error"
+  ],
+  "title": "SimAck",
+  "type": "object"
+}

@@ -1,0 +1,33 @@
+{
+  "$id": "https://nod.invalid/schema/ctl.resume.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "ctl.resume",
+      "default": "ctl.resume",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "epoch"
+  ],
+  "title": "Resume",
+  "type": "object"
+}

@@ -1,0 +1,71 @@
+{
+  "$id": "https://nod.invalid/schema/utter.start.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Start of an utterance. Audio follows as binary frames: [u32 LE utt_id][pcm16le samples].",
+  "properties": {
+    "fmt": {
+      "const": "pcm16le",
+      "default": "pcm16le",
+      "title": "Fmt",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "sr": {
+      "default": 16000,
+      "title": "Sr",
+      "type": "integer"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "utter.start",
+      "default": "utter.start",
+      "title": "Type",
+      "type": "string"
+    },
+    "utt_id": {
+      "title": "Utt Id",
+      "type": "integer"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "utt_id",
+    "sr",
+    "fmt"
+  ],
+  "title": "UtterStart",
+  "type": "object"
+}

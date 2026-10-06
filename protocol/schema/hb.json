@@ -1,0 +1,73 @@
+{
+  "$id": "https://nod.invalid/schema/hb.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Sent every 100 ms on /ws/safety.",
+  "properties": {
+    "face_present": {
+      "title": "Face Present",
+      "type": "boolean"
+    },
+    "fps": {
+      "title": "Fps",
+      "type": "number"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "latched": {
+      "title": "Latched",
+      "type": "boolean"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "track_conf": {
+      "title": "Track Conf",
+      "type": "number"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "hb",
+      "default": "hb",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "face_present",
+    "track_conf",
+    "fps",
+    "latched"
+  ],
+  "title": "Heartbeat",
+  "type": "object"
+}

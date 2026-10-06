@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nod-protocol"
+version = "0.1.0"
+description = "Nod shared message contract: pydantic v2 models, msgpack helpers, skill registry models"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.9",
+  "msgpack>=1.0",
+  "pyyaml>=6.0",     # skills.yaml loader
+]
+
+[project.optional-dependencies]
+numpy = ["numpy>=1.24"]          # needed only for the `pose` message arrays
+fast = ["ormsgpack>=1.5"]        # faster msgpack; used automatically when installed
+test = ["pytest>=8", "numpy>=1.24", "ormsgpack>=1.5", "jsonschema>=4.18"]
+
+[tool.setuptools]
+packages = ["nod_protocol"]
+
+[tool.setuptools.package-data]
+nod_protocol = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

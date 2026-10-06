@@ -1,0 +1,137 @@
+{
+  "$id": "https://nod.invalid/schema/gesture.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Telemetry: the phone's UI state machine has already acted on the gesture.",
+  "properties": {
+    "fps": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fps"
+    },
+    "held_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Held Ms"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "enum": [
+        "long_blink",
+        "double_blink",
+        "brow_raise",
+        "turn_left",
+        "turn_right",
+        "jaw_hold",
+        "face_lost",
+        "face_found"
+      ],
+      "title": "Name",
+      "type": "string"
+    },
+    "phase": {
+      "enum": [
+        "fired",
+        "cancelled"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "pitch_deg": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pitch Deg"
+    },
+    "scores": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Scores",
+      "type": "object"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "gesture",
+      "default": "gesture",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    },
+    "yaw_deg": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Yaw Deg"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "name",
+    "phase",
+    "held_ms",
+    "yaw_deg",
+    "pitch_deg",
+    "scores",
+    "fps"
+  ],
+  "title": "Gesture",
+  "type": "object"
+}

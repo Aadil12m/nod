@@ -1,0 +1,62 @@
+{
+  "$id": "https://nod.invalid/schema/pong.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "t0": {
+      "title": "T0",
+      "type": "integer"
+    },
+    "t_srv": {
+      "title": "T Srv",
+      "type": "integer"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "pong",
+      "default": "pong",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "t0",
+    "t_srv"
+  ],
+  "title": "Pong",
+  "type": "object"
+}

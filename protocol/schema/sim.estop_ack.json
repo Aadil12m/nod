@@ -1,0 +1,56 @@
+{
+  "$id": "https://nod.invalid/schema/sim.estop_ack.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "estop_seq": {
+      "title": "Estop Seq",
+      "type": "integer"
+    },
+    "stopped_at_step": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stopped At Step"
+    },
+    "t_halt": {
+      "title": "T Halt",
+      "type": "integer"
+    },
+    "t_rx": {
+      "title": "T Rx",
+      "type": "integer"
+    },
+    "type": {
+      "const": "sim.estop_ack",
+      "default": "sim.estop_ack",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "estop_seq",
+    "epoch",
+    "stopped_at_step",
+    "t_rx",
+    "t_halt"
+  ],
+  "title": "SimEStopAck",
+  "type": "object"
+}

@@ -1,0 +1,5 @@
+node_modules/
+vendor/*
+!vendor/README.md
+test-results/
+tests/.cache/

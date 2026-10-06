@@ -1,0 +1,1258 @@
+{
+  "$defs": {
+    "Check": {
+      "description": "One validator rule outcome (5.2), e.g. {\"rule\": \"R4_preconditions\", \"ok\": true}.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "ok",
+        "detail"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "CosmosVerdict": {
+      "description": "Compact Cosmos outcome embedded in a `run` update.",
+      "properties": {
+        "answer": {
+          "enum": [
+            "yes",
+            "no",
+            "unsure"
+          ],
+          "title": "Answer",
+          "type": "string"
+        },
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "done",
+            "failed",
+            "uncertain",
+            "proceed",
+            "block"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "pre",
+            "post"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "phase",
+        "answer",
+        "reason",
+        "decision"
+      ],
+      "title": "CosmosVerdict",
+      "type": "object"
+    },
+    "EStopAck": {
+      "properties": {
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "lat_ms": {
+          "$ref": "#/$defs/LatMs"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "stopped_at_step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stopped At Step"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "estop.ack",
+          "default": "estop.ack",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "estop_seq",
+        "stopped_at_step",
+        "lat_ms"
+      ],
+      "title": "EStopAck",
+      "type": "object"
+    },
+    "FixedOption": {
+      "description": "Cards the UI always adds, e.g. {\"option_id\": \"none\", \"label\": \"None of these\"}.",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "label"
+      ],
+      "title": "FixedOption",
+      "type": "object"
+    },
+    "LatMs": {
+      "description": "E-stop latency breakdown in ms (5.5).",
+      "properties": {
+        "gw_sim": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gw Sim"
+        },
+        "phone_gw": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phone Gw"
+        },
+        "sim_halt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sim Halt"
+        }
+      },
+      "required": [
+        "phone_gw",
+        "gw_sim",
+        "sim_halt"
+      ],
+      "title": "LatMs",
+      "type": "object"
+    },
+    "Notice": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "level": {
+          "default": "info",
+          "enum": [
+            "info",
+            "warn",
+            "error"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "speak": {
+          "default": false,
+          "title": "Speak",
+          "type": "boolean"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "notice",
+          "default": "notice",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "level",
+        "text",
+        "speak"
+      ],
+      "title": "Notice",
+      "type": "object"
+    },
+    "Option": {
+      "description": "One card. `label` always comes from the registry (R13); `why` is LLM text, <= 80 chars.",
+      "properties": {
+        "badges": {
+          "items": {
+            "enum": [
+              "less_reliable",
+              "needs_caregiver",
+              "unsure_from_camera",
+              "near_user",
+              "scripted",
+              "first_use"
+            ],
+            "type": "string"
+          },
+          "title": "Badges",
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "confirm": {
+          "enum": [
+            "single",
+            "double",
+            "per_step"
+          ],
+          "title": "Confirm",
+          "type": "string"
+        },
+        "est_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est S"
+        },
+        "home_action": {
+          "anyOf": [
+            {
+              "enum": [
+                "lights_on",
+                "lights_off",
+                "call_caregiver"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Home Action"
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "plan",
+            "home"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "locked": {
+          "default": false,
+          "title": "Locked",
+          "type": "boolean"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        },
+        "precheck": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Precheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "risk": {
+          "enum": [
+            "none",
+            "low",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "skill_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skill Ids",
+          "type": "array"
+        },
+        "success": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Success"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "why": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "kind",
+        "skill_ids",
+        "home_action",
+        "label",
+        "why",
+        "success",
+        "est_s",
+        "risk",
+        "confirm",
+        "checks",
+        "precheck",
+        "badges",
+        "locked"
+      ],
+      "title": "Option",
+      "type": "object"
+    },
+    "Pong": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "t0": {
+          "title": "T0",
+          "type": "integer"
+        },
+        "t_srv": {
+          "title": "T Srv",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "pong",
+          "default": "pong",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "t0",
+        "t_srv"
+      ],
+      "title": "Pong",
+      "type": "object"
+    },
+    "Precheck": {
+      "description": "Cosmos pre-check status of one option (5.4).",
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "ok",
+            "unsure",
+            "block",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "Precheck",
+      "type": "object"
+    },
+    "Proposal": {
+      "properties": {
+        "arm_delay_ms": {
+          "default": 300,
+          "title": "Arm Delay Ms",
+          "type": "integer"
+        },
+        "expires_at": {
+          "title": "Expires At",
+          "type": "integer"
+        },
+        "fixed": {
+          "items": {
+            "$ref": "#/$defs/FixedOption"
+          },
+          "title": "Fixed",
+          "type": "array"
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Focus"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "nonce": {
+          "title": "Nonce",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/Option"
+          },
+          "maxItems": 3,
+          "title": "Options",
+          "type": "array"
+        },
+        "proposal_id": {
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "source": {
+          "enum": [
+            "nemotron",
+            "menu",
+            "fake"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "transcript": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcript"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "proposal",
+          "default": "proposal",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "proposal_id",
+        "expires_at",
+        "arm_delay_ms",
+        "source",
+        "model",
+        "transcript",
+        "options",
+        "fixed",
+        "focus",
+        "nonce"
+      ],
+      "title": "Proposal",
+      "type": "object"
+    },
+    "RunUpdate": {
+      "description": "Progress of the run in flight (`type: \"run\"`).",
+      "properties": {
+        "cosmos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CosmosVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "elapsed_ms": {
+          "default": 0,
+          "title": "Elapsed Ms",
+          "type": "integer"
+        },
+        "fault": {
+          "anyOf": [
+            {
+              "enum": [
+                "eef_out_of_box",
+                "policy_timeout",
+                "nan_action",
+                "hb_lost",
+                "budget"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fault"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "max_steps": {
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "option_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Option Id"
+        },
+        "oracle": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oracle"
+        },
+        "phase": {
+          "enum": [
+            "countdown",
+            "precheck",
+            "executing",
+            "returning_home",
+            "postcheck",
+            "done",
+            "failed",
+            "uncertain",
+            "aborted",
+            "paused"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "plan_len": {
+          "default": 1,
+          "title": "Plan Len",
+          "type": "integer"
+        },
+        "plan_step": {
+          "default": 0,
+          "title": "Plan Step",
+          "type": "integer"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposal Id"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "sim_step": {
+          "default": 0,
+          "title": "Sim Step",
+          "type": "integer"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "run",
+          "default": "run",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "run_id",
+        "proposal_id",
+        "option_id",
+        "plan_step",
+        "plan_len",
+        "skill_id",
+        "phase",
+        "sim_step",
+        "max_steps",
+        "elapsed_ms",
+        "cosmos",
+        "oracle",
+        "fault"
+      ],
+      "title": "RunUpdate",
+      "type": "object"
+    },
+    "State": {
+      "properties": {
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "IDLE",
+            "LISTENING",
+            "PLANNING",
+            "AWAITING_CONFIRM",
+            "COUNTDOWN",
+            "EXECUTING",
+            "POSTCHECK",
+            "PAUSED",
+            "ESTOPPED"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "state",
+          "default": "state",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "mode",
+        "run_id",
+        "scene_id",
+        "estop_seq"
+      ],
+      "title": "State",
+      "type": "object"
+    },
+    "Success": {
+      "description": "Success estimate shown on a card (\"19/20 in tests\").\n\nFor a plan, `p_est` is the product of in-chain rates (R10), and `n`, `k` and\n`wilson_lo` describe the weakest step. `k` is an addition to the design JSON.",
+      "properties": {
+        "basis": {
+          "enum": [
+            "alone",
+            "in_chain"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "k": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "K"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "p_est": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "P Est",
+          "type": "number"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p_est",
+        "basis",
+        "n",
+        "wilson_lo",
+        "k"
+      ],
+      "title": "Success",
+      "type": "object"
+    },
+    "Thumb": {
+      "description": "Header for the binary JPEG frame that follows it (at most 5 fps).",
+      "properties": {
+        "camera": {
+          "title": "Camera",
+          "type": "string"
+        },
+        "h": {
+          "title": "H",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "thumb",
+          "default": "thumb",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "w": {
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "camera",
+        "w",
+        "h",
+        "step"
+      ],
+      "title": "Thumb",
+      "type": "object"
+    },
+    "Transcript": {
+      "description": "ASR result. Also the return type of `ASR.transcribe` (4.2.2).",
+      "properties": {
+        "asr_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asr Ms"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "transcript",
+          "default": "transcript",
+          "title": "Type",
+          "type": "string"
+        },
+        "utt_id": {
+          "title": "Utt Id",
+          "type": "integer"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "utt_id",
+        "text",
+        "asr_ms"
+      ],
+      "title": "Transcript",
+      "type": "object"
+    },
+    "Welcome": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "lease": {
+          "enum": [
+            "user",
+            "caregiver",
+            "none"
+          ],
+          "title": "Lease",
+          "type": "string"
+        },
+        "resume_token": {
+          "title": "Resume Token",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "server_time": {
+          "title": "Server Time",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "welcome",
+          "default": "welcome",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "resume_token",
+        "lease",
+        "server_time"
+      ],
+      "title": "Welcome",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/gateway_out.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "estop.ack": "#/$defs/EStopAck",
+      "notice": "#/$defs/Notice",
+      "pong": "#/$defs/Pong",
+      "proposal": "#/$defs/Proposal",
+      "run": "#/$defs/RunUpdate",
+      "state": "#/$defs/State",
+      "thumb": "#/$defs/Thumb",
+      "transcript": "#/$defs/Transcript",
+      "welcome": "#/$defs/Welcome"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Welcome"
+    },
+    {
+      "$ref": "#/$defs/Pong"
+    },
+    {
+      "$ref": "#/$defs/State"
+    },
+    {
+      "$ref": "#/$defs/Transcript"
+    },
+    {
+      "$ref": "#/$defs/Proposal"
+    },
+    {
+      "$ref": "#/$defs/RunUpdate"
+    },
+    {
+      "$ref": "#/$defs/EStopAck"
+    },
+    {
+      "$ref": "#/$defs/Notice"
+    },
+    {
+      "$ref": "#/$defs/Thumb"
+    }
+  ],
+  "title": "Gateway to phone messages"
+}

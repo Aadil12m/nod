@@ -1,0 +1,517 @@
+{
+  "$defs": {
+    "Eef": {
+      "description": "End-effector position and binarised gripper state.",
+      "properties": {
+        "gripper": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "title": "Gripper",
+          "type": "string"
+        },
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "gripper",
+        "quat"
+      ],
+      "title": "Eef",
+      "type": "object"
+    },
+    "FailureInfo": {
+      "description": "Recovery context (`plan.md`, Super).",
+      "properties": {
+        "cosmos_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cosmos Reason"
+        },
+        "oracle": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oracle"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        },
+        "steps": {
+          "title": "Steps",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skill_id",
+        "steps",
+        "cosmos_reason",
+        "oracle"
+      ],
+      "title": "FailureInfo",
+      "type": "object"
+    },
+    "FeasibleSkill": {
+      "properties": {
+        "est_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est S"
+        },
+        "kind": {
+          "enum": [
+            "policy",
+            "scripted",
+            "home"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "risk": {
+          "enum": [
+            "none",
+            "low",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        },
+        "success_alone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Success"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "success_in_chain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Success"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "skill_id",
+        "kind",
+        "label",
+        "success_alone",
+        "success_in_chain",
+        "est_s",
+        "risk"
+      ],
+      "title": "FeasibleSkill",
+      "type": "object"
+    },
+    "HistoryItem": {
+      "properties": {
+        "at": {
+          "title": "At",
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "done",
+            "failed",
+            "uncertain",
+            "aborted"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "outcome",
+        "at"
+      ],
+      "title": "HistoryItem",
+      "type": "object"
+    },
+    "InfeasibleSkill": {
+      "properties": {
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "rule",
+        "reason"
+      ],
+      "title": "InfeasibleSkill",
+      "type": "object"
+    },
+    "ObjPose": {
+      "description": "Pose of one object in the sim world frame (metres). `quat` is optional.",
+      "properties": {
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "quat"
+      ],
+      "title": "ObjPose",
+      "type": "object"
+    },
+    "Profile": {
+      "properties": {
+        "caregiver_enabled": {
+          "default": false,
+          "title": "Caregiver Enabled",
+          "type": "boolean"
+        },
+        "caregiver_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caregiver Name"
+        },
+        "preferred_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferred Name"
+        }
+      },
+      "required": [
+        "preferred_name",
+        "caregiver_name",
+        "caregiver_enabled"
+      ],
+      "title": "Profile",
+      "type": "object"
+    },
+    "Success": {
+      "description": "Success estimate shown on a card (\"19/20 in tests\").\n\nFor a plan, `p_est` is the product of in-chain rates (R10), and `n`, `k` and\n`wilson_lo` describe the weakest step. `k` is an addition to the design JSON.",
+      "properties": {
+        "basis": {
+          "enum": [
+            "alone",
+            "in_chain"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "k": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "K"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "p_est": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "P Est",
+          "type": "number"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p_est",
+        "basis",
+        "n",
+        "wilson_lo",
+        "k"
+      ],
+      "title": "Success",
+      "type": "object"
+    },
+    "WorldState": {
+      "description": "Oracle world state.\n\n`atoms` maps ground atoms in registry form, e.g. \"on(akita_black_bowl_1,plate_1)\",\nto their truth value, as evaluated by LIBERO's `_eval_predicate`. The sim reports\nevery atom that appears (positive or negated) in any registry `pre` or `effects`.\nAn atom missing from `atoms` is UNKNOWN; see `nod_protocol.atoms.holds`.",
+      "properties": {
+        "atoms": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Atoms",
+          "type": "object"
+        },
+        "eef": {
+          "$ref": "#/$defs/Eef"
+        },
+        "objects": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ObjPose"
+          },
+          "title": "Objects",
+          "type": "object"
+        },
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "t_sim": {
+          "title": "T Sim",
+          "type": "number"
+        }
+      },
+      "required": [
+        "scene_id",
+        "step",
+        "t_sim",
+        "atoms",
+        "objects",
+        "eef"
+      ],
+      "title": "WorldState",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/plan_request.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Everything `Planner.propose` needs. The prompt builder renders it to JSON context.",
+  "properties": {
+    "failure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FailureInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "feasible": {
+      "items": {
+        "$ref": "#/$defs/FeasibleSkill"
+      },
+      "title": "Feasible",
+      "type": "array"
+    },
+    "history": {
+      "items": {
+        "$ref": "#/$defs/HistoryItem"
+      },
+      "maxItems": 5,
+      "title": "History",
+      "type": "array"
+    },
+    "infeasible": {
+      "items": {
+        "$ref": "#/$defs/InfeasibleSkill"
+      },
+      "title": "Infeasible",
+      "type": "array"
+    },
+    "input": {
+      "title": "Input",
+      "type": "string"
+    },
+    "mode": {
+      "default": "fast",
+      "enum": [
+        "fast",
+        "plan",
+        "recovery"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "plan_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Plan Ids",
+      "type": "array"
+    },
+    "profile": {
+      "$ref": "#/$defs/Profile"
+    },
+    "time": {
+      "title": "Time",
+      "type": "string"
+    },
+    "world": {
+      "$ref": "#/$defs/WorldState"
+    }
+  },
+  "required": [
+    "mode",
+    "input",
+    "profile",
+    "time",
+    "world",
+    "feasible",
+    "infeasible",
+    "plan_ids",
+    "history",
+    "failure"
+  ],
+  "title": "PlanRequest",
+  "type": "object"
+}

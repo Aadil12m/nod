@@ -1,0 +1,34 @@
+{
+  "$id": "https://nod.invalid/schema/ctl.hb.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Relayed every 100 ms only while the phone heartbeat is fresh (5.6).",
+  "properties": {
+    "phone_ok": {
+      "title": "Phone Ok",
+      "type": "boolean"
+    },
+    "t": {
+      "title": "T",
+      "type": "integer"
+    },
+    "type": {
+      "const": "ctl.hb",
+      "default": "ctl.hb",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "t",
+    "phone_ok"
+  ],
+  "title": "CtlHeartbeat",
+  "type": "object"
+}

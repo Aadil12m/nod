@@ -1,0 +1,131 @@
+{
+  "$id": "https://nod.invalid/schema/pose.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Body poses for the viewer, published on port 5563.\n\nArrays are float32; see `nod_protocol.arrays` for the wire format.\nxpos is [nb, 3], xquat is [nb, 4] (w, x, y, z), qpos is [nq].",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "qpos": {
+      "additionalProperties": false,
+      "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+      "properties": {
+        "data": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "dtype": {
+          "const": "<f4",
+          "type": "string"
+        },
+        "shape": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "dtype",
+        "shape",
+        "data"
+      ],
+      "title": "Float32Array",
+      "type": "object"
+    },
+    "step": {
+      "title": "Step",
+      "type": "integer"
+    },
+    "t_sim": {
+      "title": "T Sim",
+      "type": "number"
+    },
+    "t_wall": {
+      "title": "T Wall",
+      "type": "number"
+    },
+    "type": {
+      "const": "pose",
+      "default": "pose",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    },
+    "xpos": {
+      "additionalProperties": false,
+      "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+      "properties": {
+        "data": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "dtype": {
+          "const": "<f4",
+          "type": "string"
+        },
+        "shape": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "dtype",
+        "shape",
+        "data"
+      ],
+      "title": "Float32Array",
+      "type": "object"
+    },
+    "xquat": {
+      "additionalProperties": false,
+      "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+      "properties": {
+        "data": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "dtype": {
+          "const": "<f4",
+          "type": "string"
+        },
+        "shape": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "dtype",
+        "shape",
+        "data"
+      ],
+      "title": "Float32Array",
+      "type": "object"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "epoch",
+    "step",
+    "t_sim",
+    "t_wall",
+    "xpos",
+    "xquat",
+    "qpos"
+  ],
+  "title": "Pose",
+  "type": "object"
+}

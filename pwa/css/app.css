@@ -1,0 +1,182 @@
+/* Nod phone UI: large text, high contrast, works one-handed or hands-free. */
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --muted: #c8c8c8;
+  --focus: #ffd400;
+  --armed: #00e676;
+  --stop: #d50000;
+  --stop-deep: #9b0000;
+  --card: #141414;
+  --line: #3a3a3a;
+  --warn: #ffab00;
+  --radius: 18px;
+  font-size: 18px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- header */
+.bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: max(8px, env(safe-area-inset-top)) 16px 8px;
+  min-height: 48px;
+}
+.conn { font-size: 0.85rem; color: var(--muted); }
+.conn::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--stop); }
+.conn[data-ok="1"]::before { background: var(--armed); }
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+  border: 2px solid var(--fg); letter-spacing: 0.02em;
+}
+.badge.replay { background: var(--focus); color: #000; border-color: var(--focus); }
+.badge.warn { border-color: var(--warn); color: var(--warn); }
+.badge.mic { border-color: var(--armed); color: var(--armed); }
+.preview {
+  margin-left: auto; width: 96px; height: 72px; object-fit: cover; border-radius: 10px;
+  transform: scaleX(-1); /* mirrored for the user only; inference sees the raw frame */
+  border: 2px solid var(--line);
+}
+
+/* ---------------------------------------------------------------- main screens */
+main { flex: 1; display: flex; flex-direction: column; padding: 8px 16px; }
+.center { margin: auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0; }
+h1 { font-size: clamp(2rem, 9vw, 3.4rem); margin: 0; line-height: 1.1; }
+h2 { font-size: clamp(1.5rem, 6vw, 2.2rem); margin: 0; }
+.sub { font-size: clamp(1.2rem, 4.8vw, 1.6rem); color: var(--muted); margin: 0; max-width: 32ch; }
+.kicker { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--focus); margin: 0; }
+.hint { font-size: 1.25rem; color: var(--focus); margin: 0; }
+.transcript { font-size: 1.4rem; font-style: italic; margin: 0; }
+.transcript.small { font-size: 1.1rem; color: var(--muted); }
+.reason { font-size: 1.2rem; color: var(--muted); max-width: 34ch; }
+
+.spinner {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 8px solid var(--line); border-top-color: var(--focus);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- option cards */
+.choose { display: flex; flex-direction: column; gap: 10px; }
+.cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border: 3px solid var(--line); border-radius: var(--radius);
+  padding: 16px; min-height: 96px; cursor: pointer;
+}
+.card .card-text { flex: 1; min-width: 0; }
+.card .label { font-size: clamp(1.5rem, 6.4vw, 2.2rem); font-weight: 800; line-height: 1.15; }
+.card .why { font-size: clamp(1rem, 4vw, 1.25rem); color: var(--muted); margin-top: 4px; }
+.card .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 1rem; color: var(--muted); }
+.card .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.card .badges .badge { border-color: var(--warn); color: var(--warn); }
+.card.fixed { min-height: 64px; }
+.card.fixed .label { font-size: 1.4rem; font-weight: 700; color: var(--muted); }
+.card.focused { border-color: var(--focus); border-width: 6px; padding: 13px; background: #1f1c00; }
+.card.focused .label::before { content: "\25B6\00A0"; color: var(--focus); }
+.card.armed { border-color: var(--armed); background: #002611; }
+.card.armed .label::before { color: var(--armed); }
+.card.locked { opacity: 0.65; }
+.help { text-align: center; font-size: 1.3rem; font-weight: 700; margin: 4px 0 0; }
+
+/* ---------------------------------------------------------------- confirm ring */
+.ring-host { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ring { width: 72px; height: 72px; transform: rotate(-90deg); }
+.center .ring { width: 120px; height: 120px; }
+.ring circle { fill: none; stroke-width: 10; }
+.ring .ring-bg { stroke: var(--line); }
+.ring .ring-fg { stroke: var(--muted); transition: stroke-dashoffset 60ms linear; }
+.ring.armed .ring-fg { stroke: var(--armed); }
+.ring.full .ring-fg { stroke: var(--focus); }
+
+/* ---------------------------------------------------------------- run */
+.run h1 { max-width: 18ch; }
+.progress { width: min(100%, 520px); height: 22px; background: var(--line); border-radius: 11px; overflow: hidden; }
+.progress > span, .countdown-bar > span { display: block; height: 100%; background: var(--focus); transition: width 120ms linear; }
+.countdown-bar { width: min(100%, 520px); height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+.elapsed { font-size: 1.2rem; color: var(--muted); margin: 0; }
+.stop-hint { font-size: 1.3rem; font-weight: 700; color: #ff6e6e; margin: 0; }
+.stop-hint.big { font-size: clamp(1.4rem, 6vw, 2rem); padding: 14px 18px; border: 3px solid var(--stop); border-radius: var(--radius); }
+.result-done h1 { color: var(--armed); }
+.result-failed h1, .result-aborted h1 { color: #ff6e6e; }
+.result-uncertain h1 { color: var(--warn); }
+
+/* ---------------------------------------------------------------- stopped (latched) */
+.stopped {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--stop); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: 24px 16px; text-align: center;
+}
+.stopped h1 { font-size: clamp(3rem, 15vw, 7rem); letter-spacing: 0.02em; }
+.stopped .status { font-size: 1.6rem; font-weight: 700; margin: 0; }
+.stopped .lat { font-size: 1rem; opacity: 0.9; margin: 0; }
+.stopped .clear { margin-top: 12px; padding: 18px; border: 3px solid #fff; border-radius: var(--radius); background: var(--stop-deep); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.stopped .clear p { margin: 0; font-size: 1.2rem; }
+.stopped .ring .ring-bg { stroke: rgba(255, 255, 255, 0.3); }
+.stopped .ring .ring-fg { stroke: #fff; }
+.clear-touch { margin-top: 8px; background: #fff; color: var(--stop-deep); border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 800; }
+body[data-screen="stopped"] .controls { visibility: hidden; }
+
+/* ---------------------------------------------------------------- overlays */
+.overlay {
+  position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px;
+}
+.overlay p { font-size: 1.4rem; color: var(--muted); }
+.toast {
+  /* In the page flow, never on top of the STOP button or the cards. */
+  margin: 0 16px; background: #222; border: 2px solid var(--fg); border-radius: 14px;
+  padding: 10px 14px; font-size: 1.15rem; text-align: center;
+}
+.toast[data-level="warn"], .toast[data-level="error"] { border-color: var(--warn); }
+
+/* ---------------------------------------------------------------- footer controls */
+.controls {
+  /* Above the "I can't see you" overlay: the STOP button is never covered. */
+  position: relative; z-index: 45; background: var(--bg);
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px;
+}
+.stop-btn {
+  width: 100%; min-height: 76px; border: 0; border-radius: var(--radius);
+  background: var(--stop); color: #fff; font-size: 2rem; font-weight: 900; letter-spacing: 0.1em;
+}
+.stop-btn:active { background: var(--stop-deep); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.utter { display: flex; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.utter input {
+  flex: 1; min-width: 0; min-height: 48px; padding: 8px 12px; border-radius: 12px;
+  border: 2px solid var(--line); background: #111; color: var(--fg);
+}
+button.secondary, .buttons button {
+  min-height: 48px; padding: 8px 16px; border-radius: 12px; border: 2px solid var(--fg);
+  background: transparent; color: var(--fg); font-weight: 700;
+}
+.buttons { display: flex; flex-direction: column; gap: 10px; width: min(100%, 420px); }
+.buttons button { min-height: 56px; font-size: 1.15rem; }
+.buttons button:first-child { background: var(--focus); color: #000; border-color: var(--focus); }
+.keys, .status-line { margin: 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
+.calib .prompt { font-size: clamp(1.6rem, 7vw, 2.6rem); max-width: 20ch; }
+.calib .overall { color: var(--muted); }
+.warnings { text-align: left; color: var(--warn); font-size: 1.05rem; max-width: 36ch; }
+:focus-visible { outline: 4px solid var(--focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 3s; }
+  .ring .ring-fg, .progress > span { transition: none; }
+}

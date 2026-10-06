@@ -1,0 +1,314 @@
+{
+  "$defs": {
+    "EStop": {
+      "description": "Resent every 100 ms until the matching `estop.ack`. Also sent by the presenter.",
+      "properties": {
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "held_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Ms"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "source": {
+          "enum": [
+            "jaw_hold",
+            "voice_stop",
+            "button",
+            "presenter"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "t_detect": {
+          "title": "T Detect",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "estop",
+          "default": "estop",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "estop_seq",
+        "source",
+        "t_detect",
+        "held_ms"
+      ],
+      "title": "EStop",
+      "type": "object"
+    },
+    "EStopReset": {
+      "properties": {
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "gesture": {
+          "title": "Gesture",
+          "type": "string"
+        },
+        "held_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Ms"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "estop.reset",
+          "default": "estop.reset",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "estop_seq",
+        "gesture",
+        "held_ms"
+      ],
+      "title": "EStopReset",
+      "type": "object"
+    },
+    "Heartbeat": {
+      "description": "Sent every 100 ms on /ws/safety.",
+      "properties": {
+        "face_present": {
+          "title": "Face Present",
+          "type": "boolean"
+        },
+        "fps": {
+          "title": "Fps",
+          "type": "number"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "latched": {
+          "title": "Latched",
+          "type": "boolean"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "track_conf": {
+          "title": "Track Conf",
+          "type": "number"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "hb",
+          "default": "hb",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "face_present",
+        "track_conf",
+        "fps",
+        "latched"
+      ],
+      "title": "Heartbeat",
+      "type": "object"
+    },
+    "Ping": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "t0": {
+          "title": "T0",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ping",
+          "default": "ping",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "t0"
+      ],
+      "title": "Ping",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/safety_in.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "estop": "#/$defs/EStop",
+      "estop.reset": "#/$defs/EStopReset",
+      "hb": "#/$defs/Heartbeat",
+      "ping": "#/$defs/Ping"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Heartbeat"
+    },
+    {
+      "$ref": "#/$defs/EStop"
+    },
+    {
+      "$ref": "#/$defs/EStopReset"
+    },
+    {
+      "$ref": "#/$defs/Ping"
+    }
+  ],
+  "title": "Messages the gateway accepts on /ws/safety"
+}

@@ -1,0 +1,88 @@
+{
+  "$id": "https://nod.invalid/schema/ui.confirm.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Confirm of one option. Checked by `validate_confirm` (rule R9).",
+  "properties": {
+    "focused_at": {
+      "title": "Focused At",
+      "type": "integer"
+    },
+    "gesture": {
+      "title": "Gesture",
+      "type": "string"
+    },
+    "held_ms": {
+      "title": "Held Ms",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "nonce": {
+      "title": "Nonce",
+      "type": "string"
+    },
+    "option_id": {
+      "title": "Option Id",
+      "type": "string"
+    },
+    "proposal_id": {
+      "title": "Proposal Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "shown_at": {
+      "title": "Shown At",
+      "type": "integer"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "ui.confirm",
+      "default": "ui.confirm",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "proposal_id",
+    "option_id",
+    "nonce",
+    "gesture",
+    "held_ms",
+    "shown_at",
+    "focused_at"
+  ],
+  "title": "UiConfirm",
+  "type": "object"
+}

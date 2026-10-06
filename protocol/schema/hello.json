@@ -1,0 +1,123 @@
+{
+  "$defs": {
+    "Calib": {
+      "description": "Calibration summary sent in `hello` (6.3). The profile itself stays on the phone.",
+      "properties": {
+        "fps": {
+          "title": "Fps",
+          "type": "number"
+        },
+        "long_blink_ms": {
+          "title": "Long Blink Ms",
+          "type": "integer"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "long_blink_ms",
+        "fps"
+      ],
+      "title": "Calib",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/hello.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "app_ver": {
+      "title": "App Ver",
+      "type": "string"
+    },
+    "calib": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Calib"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "device": {
+      "title": "Device",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "resume_token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resume Token"
+    },
+    "role": {
+      "default": "user",
+      "enum": [
+        "user",
+        "caregiver"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "hello",
+      "default": "hello",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "device",
+    "app_ver",
+    "role",
+    "resume_token",
+    "calib"
+  ],
+  "title": "Hello",
+  "type": "object"
+}

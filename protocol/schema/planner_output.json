@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "PlannerOption": {
+      "additionalProperties": false,
+      "description": "One option as Nemotron returns it. All five keys are required (may be null).\n\nKind/field consistency is NOT enforced here, so a single bad option does not\nfail the whole output (R1). Use `is_consistent()` and drop bad options instead.",
+      "properties": {
+        "home_action": {
+          "anyOf": [
+            {
+              "enum": [
+                "lights_on",
+                "lights_off",
+                "call_caregiver"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Home Action"
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "plan",
+            "home"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 4,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Plan"
+        },
+        "skill_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Skill Id"
+        },
+        "why": {
+          "maxLength": 80,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "skill_id",
+        "plan",
+        "home_action",
+        "why"
+      ],
+      "title": "PlannerOption",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/planner_output.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The 7.4 output schema. R1 is `PlannerOutput.model_validate_json(text)` succeeding.",
+  "properties": {
+    "clarify_question": {
+      "anyOf": [
+        {
+          "maxLength": 60,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Clarify Question"
+    },
+    "intent": {
+      "enum": [
+        "manipulate",
+        "home",
+        "caregiver",
+        "clarify",
+        "none"
+      ],
+      "title": "Intent",
+      "type": "string"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/PlannerOption"
+      },
+      "maxItems": 3,
+      "title": "Options",
+      "type": "array"
+    }
+  },
+  "required": [
+    "intent",
+    "clarify_question",
+    "options"
+  ],
+  "title": "PlannerOutput",
+  "type": "object"
+}

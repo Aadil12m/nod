@@ -1,0 +1,75 @@
+{
+  "$id": "https://nod.invalid/schema/estop.reset.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "estop_seq": {
+      "title": "Estop Seq",
+      "type": "integer"
+    },
+    "gesture": {
+      "title": "Gesture",
+      "type": "string"
+    },
+    "held_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Held Ms"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "estop.reset",
+      "default": "estop.reset",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "estop_seq",
+    "gesture",
+    "held_ms"
+  ],
+  "title": "EStopReset",
+  "type": "object"
+}

@@ -1,0 +1,37 @@
+{
+  "transcript": "warm up my snack",
+  "model": "nvidia/Nemotron-3_5-Lightning",
+  "recorded": false,
+  "note": "Hand-written demo of the validator at work: the plan fails the symbolic rollout (R10: the stove cannot be lit with the bowl on it), 'microwave_snack' does not exist (R2), and stove_on is high risk, so without a caregiver it is shown locked as 'Needs caregiver' (R7).",
+  "output": {
+    "intent": "manipulate",
+    "clarify_question": null,
+    "options": [
+      {
+        "kind": "plan",
+        "skill_id": null,
+        "plan": [
+          "bowl_on_stove",
+          "stove_on",
+          "bowl_on_plate"
+        ],
+        "home_action": null,
+        "why": "Heats the bowl on the stove"
+      },
+      {
+        "kind": "skill",
+        "skill_id": "microwave_snack",
+        "plan": null,
+        "home_action": null,
+        "why": "Microwave it"
+      },
+      {
+        "kind": "skill",
+        "skill_id": "stove_on",
+        "plan": null,
+        "home_action": null,
+        "why": "Turn on the stove"
+      }
+    ]
+  }
+}

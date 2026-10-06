@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Nod presenter</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/presenter.css">
+</head>
+<body>
+  <div class="layout">
+    <section class="view">
+      <iframe id="viewer" title="3D robot view" allow="fullscreen"></iframe>
+      <div id="viewer-empty" class="viewer-empty" hidden>
+        <p>No 3D view configured.</p>
+        <p class="small">Add <code>?viewer=https://view.example/</code> to the URL.</p>
+      </div>
+      <div id="stopped" class="stopped" hidden role="alert">STOPPED</div>
+    </section>
+    <aside class="hud">
+      <header>
+        <h1>Nod</h1>
+        <span id="replay" class="badge replay" hidden title="Mock mode: replaying recorded robot runs">REPLAY</span>
+        <span id="conn" class="conn" data-ok="0">Offline</span>
+      </header>
+      <dl class="stats">
+        <div><dt>State</dt><dd id="mode">-</dd></div>
+        <div><dt>Run</dt><dd id="run">-</dd></div>
+        <div><dt>View lag</dt><dd id="lag">-</dd></div>
+        <div><dt>Gateway RTT</dt><dd id="rtt">-</dd></div>
+        <div><dt>E-stop (last)</dt><dd id="estop-last">-</dd></div>
+        <div><dt>E-stop p50 / p95</dt><dd id="estop-p">-</dd></div>
+        <div><dt>Policy p95</dt><dd id="policy">-</dd></div>
+        <div><dt>LLM p50 / ASR p50</dt><dd id="llm">-</dd></div>
+      </dl>
+      <h2>Options on the phone</h2>
+      <ol id="options" class="options"></ol>
+      <h2>Skill success (tests)</h2>
+      <table id="skills" class="skills"><tbody></tbody></table>
+      <h2>Trace</h2>
+      <ol id="trace" class="trace"></ol>
+      <button id="stop" type="button" class="stop">STOP (Space)</button>
+      <p class="small">This page can stop the robot but cannot confirm actions.</p>
+    </aside>
+  </div>
+  <script type="module" src="js/presenter.js"></script>
+</body>
+</html>

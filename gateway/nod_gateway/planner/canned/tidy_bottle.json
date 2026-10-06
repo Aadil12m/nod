@@ -1,0 +1,14 @@
+{
+  "transcript": "tidy up the bottle",
+  "model": "nvidia/Nemotron-3_5-Lightning",
+  "recorded": false,
+  "note": "Hand-written.",
+  "output": {
+    "intent": "manipulate",
+    "clarify_question": null,
+    "options": [
+      {"kind": "skill", "skill_id": "bottle_on_rack", "plan": null, "home_action": null, "why": "Puts the bottle in the rack"},
+      {"kind": "skill", "skill_id": "bottle_on_cabinet", "plan": null, "home_action": null, "why": "Or on top of the cabinet"}
+    ]
+  }
+}

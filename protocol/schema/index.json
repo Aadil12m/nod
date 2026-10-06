@@ -1,0 +1,239 @@
+{
+  "documents": {
+    "cosmos_reply.json": "CosmosReply",
+    "home_result.json": "HomeResult",
+    "plan_request.json": "PlanRequest",
+    "planner_output.json": "PlannerOutput",
+    "planner_response_format.example.json": "planner_response_format() output, enums are placeholders",
+    "skill_spec.json": "SkillSpec",
+    "skills_yaml.json": "list[SkillSpec]",
+    "stats_file.json": "StatsFile",
+    "world_state.json": "WorldState"
+  },
+  "messages": {
+    "cosmos.check": {
+      "file": "cosmos.check.json",
+      "link": "ws",
+      "model": "CosmosCheck"
+    },
+    "cosmos.result": {
+      "file": "cosmos.result.json",
+      "link": "ws",
+      "model": "CosmosResult"
+    },
+    "ctl.abort": {
+      "file": "ctl.abort.json",
+      "link": "zmq",
+      "model": "Abort"
+    },
+    "ctl.capture": {
+      "file": "ctl.capture.json",
+      "link": "zmq",
+      "model": "Capture"
+    },
+    "ctl.estop": {
+      "file": "ctl.estop.json",
+      "link": "zmq",
+      "model": "CtlEStop"
+    },
+    "ctl.hb": {
+      "file": "ctl.hb.json",
+      "link": "zmq",
+      "model": "CtlHeartbeat"
+    },
+    "ctl.load_scene": {
+      "file": "ctl.load_scene.json",
+      "link": "zmq",
+      "model": "LoadScene"
+    },
+    "ctl.pause": {
+      "file": "ctl.pause.json",
+      "link": "zmq",
+      "model": "Pause"
+    },
+    "ctl.resume": {
+      "file": "ctl.resume.json",
+      "link": "zmq",
+      "model": "Resume"
+    },
+    "ctl.run_scripted": {
+      "file": "ctl.run_scripted.json",
+      "link": "zmq",
+      "model": "RunScripted"
+    },
+    "ctl.run_skill": {
+      "file": "ctl.run_skill.json",
+      "link": "zmq",
+      "model": "RunSkill"
+    },
+    "ctl.world": {
+      "file": "ctl.world.json",
+      "link": "zmq",
+      "model": "WorldRequest"
+    },
+    "estop": {
+      "file": "estop.json",
+      "link": "ws",
+      "model": "EStop"
+    },
+    "estop.ack": {
+      "file": "estop.ack.json",
+      "link": "ws",
+      "model": "EStopAck"
+    },
+    "estop.reset": {
+      "file": "estop.reset.json",
+      "link": "ws",
+      "model": "EStopReset"
+    },
+    "gesture": {
+      "file": "gesture.json",
+      "link": "ws",
+      "model": "Gesture"
+    },
+    "hb": {
+      "file": "hb.json",
+      "link": "ws",
+      "model": "Heartbeat"
+    },
+    "hello": {
+      "file": "hello.json",
+      "link": "ws",
+      "model": "Hello"
+    },
+    "metrics": {
+      "file": "metrics.json",
+      "link": "ws",
+      "model": "Metrics"
+    },
+    "notice": {
+      "file": "notice.json",
+      "link": "ws",
+      "model": "Notice"
+    },
+    "ping": {
+      "file": "ping.json",
+      "link": "ws",
+      "model": "Ping"
+    },
+    "pong": {
+      "file": "pong.json",
+      "link": "ws",
+      "model": "Pong"
+    },
+    "pose": {
+      "file": "pose.json",
+      "link": "zmq",
+      "model": "Pose"
+    },
+    "proposal": {
+      "file": "proposal.json",
+      "link": "ws",
+      "model": "Proposal"
+    },
+    "run": {
+      "file": "run.json",
+      "link": "ws",
+      "model": "RunUpdate"
+    },
+    "sim.ack": {
+      "file": "sim.ack.json",
+      "link": "zmq",
+      "model": "SimAck"
+    },
+    "sim.episode_header": {
+      "file": "sim.episode_header.json",
+      "link": "zmq",
+      "model": "SimEpisodeHeader"
+    },
+    "sim.estop_ack": {
+      "file": "sim.estop_ack.json",
+      "link": "zmq",
+      "model": "SimEStopAck"
+    },
+    "sim.frames": {
+      "file": "sim.frames.json",
+      "link": "zmq",
+      "model": "SimFrames"
+    },
+    "sim.status": {
+      "file": "sim.status.json",
+      "link": "zmq",
+      "model": "SimStatus"
+    },
+    "sim.world": {
+      "file": "sim.world.json",
+      "link": "zmq",
+      "model": "SimWorld"
+    },
+    "state": {
+      "file": "state.json",
+      "link": "ws",
+      "model": "State"
+    },
+    "thumb": {
+      "file": "thumb.json",
+      "link": "ws",
+      "model": "Thumb"
+    },
+    "trace": {
+      "file": "trace.json",
+      "link": "ws",
+      "model": "Trace"
+    },
+    "transcript": {
+      "file": "transcript.json",
+      "link": "ws",
+      "model": "Transcript"
+    },
+    "ui.cancel": {
+      "file": "ui.cancel.json",
+      "link": "ws",
+      "model": "UiCancel"
+    },
+    "ui.confirm": {
+      "file": "ui.confirm.json",
+      "link": "ws",
+      "model": "UiConfirm"
+    },
+    "ui.focus": {
+      "file": "ui.focus.json",
+      "link": "ws",
+      "model": "UiFocus"
+    },
+    "ui.menu": {
+      "file": "ui.menu.json",
+      "link": "ws",
+      "model": "UiMenu"
+    },
+    "utter.end": {
+      "file": "utter.end.json",
+      "link": "ws",
+      "model": "UtterEnd"
+    },
+    "utter.start": {
+      "file": "utter.start.json",
+      "link": "ws",
+      "model": "UtterStart"
+    },
+    "utter.text": {
+      "file": "utter.text.json",
+      "link": "ws",
+      "model": "UtterText"
+    },
+    "welcome": {
+      "file": "welcome.json",
+      "link": "ws",
+      "model": "Welcome"
+    }
+  },
+  "protocol_version": 1,
+  "unions": {
+    "gateway_out.json": "Gateway to phone messages",
+    "phone_in.json": "Messages the gateway accepts on /ws/phone",
+    "presenter_in.json": "Messages the gateway accepts on /ws/presenter",
+    "safety_in.json": "Messages the gateway accepts on /ws/safety",
+    "ws_message.json": "Any WebSocket message (discriminated on type)",
+    "zmq_message.json": "Any ZMQ msgpack message (discriminated on type)"
+  }
+}

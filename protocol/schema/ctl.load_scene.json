@@ -1,0 +1,44 @@
+{
+  "$id": "https://nod.invalid/schema/ctl.load_scene.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "init_index": {
+      "default": 0,
+      "title": "Init Index",
+      "type": "integer"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "scene_id": {
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "ctl.load_scene",
+      "default": "ctl.load_scene",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "scene_id",
+    "init_index",
+    "epoch"
+  ],
+  "title": "LoadScene",
+  "type": "object"
+}

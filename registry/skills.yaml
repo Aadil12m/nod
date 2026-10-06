@@ -1,0 +1,441 @@
+# Nod skill registry (design 4.2.3). Loaded by nod_protocol.load_skills into SkillSpec models.
+#
+# Atoms are lowercased LIBERO BDDL predicates in the form pred(arg,arg), no spaces.
+# The sim oracle reports every atom used below (nod_protocol.registry_atoms lists them):
+#   on(akita_black_bowl_1,plate_1)                              bowl on plate
+#   on(cream_cheese_1,akita_black_bowl_1)                       cheese in bowl
+#   on(wine_bottle_1,wine_rack_1_top_region)                    bottle on rack
+#   on(wine_bottle_1,wooden_cabinet_1_top_side)                 bottle on top of cabinet
+#   on(akita_black_bowl_1,wooden_cabinet_1_top_side)            bowl on top of cabinet
+#   in(akita_black_bowl_1,wooden_cabinet_1_top_region)          bowl inside the top drawer
+#   open(wooden_cabinet_1_top_region)                           top drawer open
+#   open(wooden_cabinet_1_middle_region)                        middle drawer open
+#   on(plate_1,main_table_stove_front_region)                   plate pushed to the stove front
+#   on(akita_black_bowl_1,flat_stove_1_cook_region)             bowl on the stove
+#   turnon(flat_stove_1)                                        stove on
+#   on(akita_black_bowl_1,main_table_handover_region)           bowl at the user (custom region)
+# In the initial LIBERO-Goal layout every one of these atoms is false.
+#
+# Precondition policy (why the "pre" lists look the way they do):
+#  1. The bowl is in exactly one place. The five bowl places are: plate, top of cabinet,
+#     top drawer, stove, handover. A learned skill that picks the bowl requires the bowl
+#     to be at its training start (on the table, none of those places), because every
+#     LIBERO-Goal demo starts from the initial layout. Exceptions are the snack chain
+#     (chain B): cheese_in_bowl accepts a bowl on the plate, and our custom bowl_to_user
+#     is trained from both the table and the plate and accepts cheese in the bowl.
+#  2. Do not move a bowl that holds cheese (design 4.2.3), except bowl_to_user.
+#  3. Nothing goes in or onto a place that is already taken (top of cabinet holds one item).
+#  4. Hazards: never put a bowl on a lit stove, never light a stove with a bowl on it,
+#     never reach next to a lit stove to push the plate.
+#  5. Drawers: an open drawer sticks out in front of the one above or below it, which
+#     the training demos never show, so opening one drawer requires the other closed.
+#  6. Effects are the BDDL goal atom (what the oracle checks after the run), plus delete
+#     effects ("not ...") wherever a precondition allows the object to start elsewhere.
+#  Chain A (bottle_on_rack, open_middle_drawer, cheese_in_bowl, plate_to_stove_front) and
+#  chain B (bowl_on_plate, cheese_in_bowl, bowl_to_user) pass a symbolic rollout from the
+#  initial layout; protocol/tests/test_registry.py checks this and a list of infeasible plans.
+#
+# Fields beyond the 4.2.3 example (scripted, home, objects, custom, enabled, offer, est_s)
+# are documented in docs/DEVIATIONS.md. stats: {} is filled from registry/stats/latest.json.
+
+# ------------------------------------------------------------------ LIBERO-Goal policy skills
+
+- skill_id: bowl_on_plate
+  ver: 1
+  kind: policy
+  label: "Put the bowl on the plate"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the bowl on the plate", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_bowl_on_the_plate
+  pre: ["not on(akita_black_bowl_1,plate_1)",
+        "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(cream_cheese_1,akita_black_bowl_1)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+        "not on(akita_black_bowl_1,main_table_handover_region)",
+        "not on(plate_1,main_table_stove_front_region)"]
+  effects: ["on(akita_black_bowl_1,plate_1)"]
+  objects: [akita_black_bowl_1, plate_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 10
+  cosmos:
+    pre: "Is there a black bowl on the table and is the plate empty?"
+    post: "Is the black bowl resting on the plate?"
+  undo: null
+  stats: {}
+
+- skill_id: cheese_in_bowl
+  ver: 1
+  kind: policy
+  label: "Put the cream cheese in the bowl"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the cream cheese in the bowl", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_cream_cheese_in_the_bowl
+  # The bowl may be on the table or on the plate (chain B), nowhere else.
+  pre: ["not on(cream_cheese_1,akita_black_bowl_1)",
+        "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+        "not on(akita_black_bowl_1,main_table_handover_region)"]
+  effects: ["on(cream_cheese_1,akita_black_bowl_1)"]
+  objects: [cream_cheese_1, akita_black_bowl_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 8
+  cosmos:
+    pre: "Is there a cream cheese box on the table and is the black bowl empty?"
+    post: "Is the cream cheese box inside the black bowl?"
+  undo: null
+  stats: {}
+
+- skill_id: bottle_on_rack
+  ver: 1
+  kind: policy
+  label: "Put the wine bottle on the rack"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the wine bottle on the rack", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_wine_bottle_on_the_rack
+  pre: ["not on(wine_bottle_1,wine_rack_1_top_region)",
+        "not on(wine_bottle_1,wooden_cabinet_1_top_side)"]
+  effects: ["on(wine_bottle_1,wine_rack_1_top_region)"]
+  objects: [wine_bottle_1, wine_rack_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 12
+  cosmos:
+    pre: "Is the wine bottle standing on the table and is the wine rack empty?"
+    post: "Is the wine bottle lying in the wine rack?"
+  undo: null
+  stats: {}
+
+- skill_id: bottle_on_cabinet
+  ver: 1
+  kind: policy
+  label: "Put the wine bottle on top of the cabinet"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the wine bottle on top of the cabinet", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_wine_bottle_on_top_of_the_cabinet
+  pre: ["not on(wine_bottle_1,wooden_cabinet_1_top_side)",
+        "not on(wine_bottle_1,wine_rack_1_top_region)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)"]
+  effects: ["on(wine_bottle_1,wooden_cabinet_1_top_side)"]
+  objects: [wine_bottle_1, wooden_cabinet_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 12
+  cosmos:
+    pre: "Is the wine bottle standing on the table and is the top of the wooden cabinet clear?"
+    post: "Is the wine bottle standing on top of the wooden cabinet?"
+  undo: null
+  stats: {}
+
+- skill_id: bowl_on_cabinet
+  ver: 1
+  kind: policy
+  label: "Put the bowl on top of the cabinet"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the bowl on top of the cabinet", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_bowl_on_top_of_the_cabinet
+  pre: ["not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not on(akita_black_bowl_1,plate_1)",
+        "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+        "not on(akita_black_bowl_1,main_table_handover_region)",
+        "not on(cream_cheese_1,akita_black_bowl_1)",
+        "not on(wine_bottle_1,wooden_cabinet_1_top_side)"]
+  effects: ["on(akita_black_bowl_1,wooden_cabinet_1_top_side)"]
+  objects: [akita_black_bowl_1, wooden_cabinet_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 10
+  cosmos:
+    pre: "Is the black bowl on the table and is the top of the wooden cabinet clear?"
+    post: "Is the black bowl resting on top of the wooden cabinet?"
+  undo: null
+  stats: {}
+
+- skill_id: bowl_in_top_drawer
+  ver: 1
+  kind: policy
+  label: "Put the bowl in the top drawer"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "open the top drawer and put the bowl inside", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/open_the_top_drawer_and_put_the_bowl_inside
+  pre: ["not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(akita_black_bowl_1,plate_1)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+        "not on(akita_black_bowl_1,main_table_handover_region)",
+        "not on(cream_cheese_1,akita_black_bowl_1)",
+        "not open(wooden_cabinet_1_top_region)",
+        "not open(wooden_cabinet_1_middle_region)"]
+  # The skill opens the drawer and leaves it open; the oracle checks only the "in" atom.
+  effects: ["in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+            "open(wooden_cabinet_1_top_region)"]
+  objects: [akita_black_bowl_1, wooden_cabinet_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 15
+  cosmos:
+    pre: "Is the black bowl on the table and are all drawers of the wooden cabinet closed?"
+    post: "Is the black bowl inside the open top drawer of the wooden cabinet?"
+  undo: null
+  stats: {}
+
+- skill_id: open_middle_drawer
+  ver: 1
+  kind: policy
+  label: "Open the middle drawer"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "open the middle drawer of the cabinet", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/open_the_middle_drawer_of_the_cabinet
+  pre: ["not open(wooden_cabinet_1_middle_region)",
+        "not open(wooden_cabinet_1_top_region)"]
+  effects: ["open(wooden_cabinet_1_middle_region)"]
+  objects: [wooden_cabinet_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 8
+  cosmos:
+    pre: "Are the drawers of the wooden cabinet closed?"
+    post: "Is the middle drawer of the wooden cabinet open?"
+  undo: close_middle_drawer
+  stats: {}
+
+- skill_id: plate_to_stove_front
+  ver: 1
+  kind: policy
+  label: "Push the plate to the front of the stove"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "push the plate to the front of the stove", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/push_the_plate_to_the_front_of_the_stove
+  pre: ["not on(plate_1,main_table_stove_front_region)",
+        "not on(akita_black_bowl_1,plate_1)",
+        "not turnon(flat_stove_1)"]
+  effects: ["on(plate_1,main_table_stove_front_region)"]
+  objects: [plate_1, flat_stove_1]
+  risk: low
+  confirm: single
+  near_user: false
+  est_s: 8
+  cosmos:
+    pre: "Is the plate empty and is the stove switched off?"
+    post: "Is the plate on the table directly in front of the stove?"
+  undo: null
+  stats: {}
+
+- skill_id: bowl_on_stove
+  ver: 1
+  kind: policy
+  label: "Put the bowl on the stove"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "put the bowl on the stove", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/put_the_bowl_on_the_stove
+  pre: ["not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+        "not on(akita_black_bowl_1,plate_1)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(akita_black_bowl_1,main_table_handover_region)",
+        "not on(cream_cheese_1,akita_black_bowl_1)",
+        "not turnon(flat_stove_1)",
+        "not on(plate_1,main_table_stove_front_region)"]
+  effects: ["on(akita_black_bowl_1,flat_stove_1_cook_region)"]
+  objects: [akita_black_bowl_1, flat_stove_1]
+  risk: high
+  confirm: double
+  near_user: false
+  est_s: 10
+  cosmos:
+    pre: "Is the black bowl on the table and is the stove switched off with nothing on it?"
+    post: "Is the black bowl resting on the stove burner?"
+  undo: null
+  stats: {}
+
+- skill_id: stove_on
+  ver: 1
+  kind: policy
+  label: "Turn on the stove"
+  scene_id: libero_goal_v1
+  policy: {checkpoint: "GR00T-N1.7-LIBERO/libero_goal", embodiment: LIBERO_PANDA,
+           instruction: "turn on the stove", n_action_steps: 8, max_steps: 400}
+  goal_ref: libero_goal/turn_on_the_stove
+  pre: ["not turnon(flat_stove_1)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)"]
+  effects: ["turnon(flat_stove_1)"]
+  objects: [flat_stove_1]
+  risk: high
+  confirm: double
+  near_user: false
+  est_s: 6
+  cosmos:
+    pre: "Is the stove switched off with nothing on it?"
+    post: "Is the stove switched on, with its burner glowing red?"
+  undo: null
+  stats: {}
+
+# ------------------------------------------------------------------ custom policy skill (ours)
+
+- skill_id: bowl_to_user
+  ver: 1
+  kind: policy
+  label: "Bring the bowl to me"
+  scene_id: libero_goal_v1
+  # Fine-tuned from the libero_goal checkpoint on LIBERO-Goal plus our scripted demos (design 9.1 week 3).
+  policy: {checkpoint: "nod/GR00T-N1.7-LIBERO-nod/libero_goal_handover", embodiment: LIBERO_PANDA,
+           instruction: "bring the bowl to me", n_action_steps: 8, max_steps: 400}
+  goal_ref: nod/bring_the_bowl_to_me
+  # Trained from the bowl on the table and on the plate, with or without cheese (chain B).
+  pre: ["not on(akita_black_bowl_1,main_table_handover_region)",
+        "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+        "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+        "not on(akita_black_bowl_1,flat_stove_1_cook_region)"]
+  effects: ["on(akita_black_bowl_1,main_table_handover_region)",
+            "not on(akita_black_bowl_1,plate_1)"]
+  objects: [akita_black_bowl_1]
+  risk: low
+  confirm: single          # R14 adds a double confirm on first use per session
+  near_user: true
+  custom: true
+  est_s: 12
+  cosmos:
+    pre: "Is the black bowl on the table or on the plate, within reach of the robot?"
+    post: "Is the black bowl at the front edge of the table, close to the person?"
+  undo: null
+  stats: {}
+
+# ------------------------------------------------------------------ scripted motions (labelled "scripted")
+
+- skill_id: return_home
+  ver: 1
+  kind: scripted
+  label: "Return the arm home"
+  scene_id: libero_goal_v1
+  scripted: {script: return_home, max_steps: 160}
+  pre: []
+  effects: []              # arm motion only; no world atoms change (exempt from R5)
+  objects: []
+  risk: low
+  confirm: single
+  offer: false             # run by the gateway between skills, never offered as a card
+  est_s: 4
+  cosmos: null
+  undo: null
+  stats: {}
+
+- skill_id: reset_scene
+  ver: 1
+  kind: scripted
+  label: "Reset the table"
+  scene_id: libero_goal_v1
+  scripted: {script: reset_scene, max_steps: 160}
+  pre: []
+  # Restores the initial LIBERO-Goal layout: every registry atom becomes false.
+  effects: ["not on(akita_black_bowl_1,plate_1)",
+            "not on(cream_cheese_1,akita_black_bowl_1)",
+            "not on(wine_bottle_1,wine_rack_1_top_region)",
+            "not on(wine_bottle_1,wooden_cabinet_1_top_side)",
+            "not on(akita_black_bowl_1,wooden_cabinet_1_top_side)",
+            "not in(akita_black_bowl_1,wooden_cabinet_1_top_region)",
+            "not open(wooden_cabinet_1_top_region)",
+            "not open(wooden_cabinet_1_middle_region)",
+            "not on(plate_1,main_table_stove_front_region)",
+            "not on(akita_black_bowl_1,flat_stove_1_cook_region)",
+            "not turnon(flat_stove_1)",
+            "not on(akita_black_bowl_1,main_table_handover_region)"]
+  objects: []
+  risk: low
+  confirm: single
+  offer: false             # caregiver lease only, via POST /api/scene/reset (design 4.3)
+  est_s: 3
+  cosmos:
+    pre: null
+    post: "Are the bowl, plate, cream cheese and wine bottle all on the table, with every drawer closed and the stove off?"
+  undo: null
+  stats: {}
+
+- skill_id: close_middle_drawer
+  ver: 1
+  kind: scripted
+  label: "Close the middle drawer"
+  scene_id: libero_goal_v1
+  scripted: {script: close_middle_drawer, max_steps: 160}
+  pre: ["open(wooden_cabinet_1_middle_region)"]
+  effects: ["not open(wooden_cabinet_1_middle_region)"]
+  objects: [wooden_cabinet_1]
+  risk: low
+  confirm: single
+  est_s: 6
+  cosmos:
+    pre: "Is the middle drawer of the wooden cabinet open?"
+    post: "Is the middle drawer of the wooden cabinet closed?"
+  undo: open_middle_drawer
+  stats: {}
+
+- skill_id: handover_retreat
+  ver: 1
+  kind: scripted
+  label: "Move the arm back from the handover zone"
+  scene_id: libero_goal_v1
+  scripted: {script: handover_retreat, max_steps: 160}
+  pre: []
+  effects: []              # arm motion only (exempt from R5)
+  objects: []
+  risk: low
+  confirm: single
+  offer: false             # run by the gateway after bowl_to_user
+  est_s: 3
+  cosmos: null
+  undo: null
+  stats: {}
+
+# ------------------------------------------------------------------ home actions (Home Assistant, not the arm)
+
+- skill_id: lights_on
+  ver: 1
+  kind: home
+  label: "Turn the lights on"
+  home: {action: lights_on}
+  risk: none
+  confirm: single
+  est_s: 2
+  undo: lights_off
+  stats: {}
+
+- skill_id: lights_off
+  ver: 1
+  kind: home
+  label: "Turn the lights off"
+  home: {action: lights_off}
+  risk: none
+  confirm: single
+  est_s: 2
+  undo: lights_on
+  stats: {}
+
+- skill_id: call_caregiver
+  ver: 1
+  kind: home
+  label: "Call my caregiver"
+  home: {action: call_caregiver}
+  risk: none
+  confirm: single
+  est_s: 2
+  undo: null
+  stats: {}

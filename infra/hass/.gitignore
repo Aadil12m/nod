@@ -1,0 +1,4 @@
+# Home Assistant writes its runtime state here; only configuration.yaml is ours.
+*
+!.gitignore
+!configuration.yaml

@@ -1,0 +1,51 @@
+#cloud-config
+# Cloud-init for the Nod dev VM (design 8.1). create_vm.sh fills in the two placeholders:
+#   __SSH_PUBKEY__    the contents of your public key (default ~/.ssh/id_ed25519.pub)
+#   __NOD_REPO_URL__  the git URL of this repo (empty: no clone)
+# Boot image: ubuntu24.04-cuda13.0 (driver 580, CUDA 13.0, NVIDIA Container Toolkit), the image
+# Nebius recommends for RTX PRO 6000 (nebius-ops report 2.3).
+
+users:
+  - name: nod
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [sudo]
+    ssh_authorized_keys:
+      - "__SSH_PUBKEY__"
+
+package_update: true
+packages:
+  - git
+  - git-lfs
+  - jq
+  - tmux
+  - ffmpeg
+  - libegl1-mesa-dev
+  - libglu1-mesa
+  - ca-certificates
+  - curl
+  - make
+
+write_files:
+  - path: /etc/profile.d/nod.sh
+    permissions: "0644"
+    content: |
+      # Nod: headless MuJoCo rendering defaults for the spike (design 8.2)
+      export MUJOCO_GL=egl
+      export PYOPENGL_PLATFORM=egl
+
+runcmd:
+  # Docker Engine and the compose plugin, if the image does not ship them. The NVIDIA Container
+  # Toolkit is part of the image; register it with Docker so `gpus`/device requests work.
+  - [bash, -c, "command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh)"]
+  - [bash, -c, "command -v nvidia-ctk >/dev/null && nvidia-ctk runtime configure --runtime=docker && systemctl restart docker || true"]
+  - [bash, -c, "usermod -aG docker nod"]
+  - [bash, -c, "git lfs install --system"]
+  # uv for the nod user (runbook 8.2 uses it for Isaac-GR00T).
+  - [bash, -c, "su - nod -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'"]
+  # Clone this repo if a URL was given.
+  - [bash, -c, "test -n '__NOD_REPO_URL__' && su - nod -c 'git clone __NOD_REPO_URL__ ~/nod' || true"]
+  - [bash, -c, "mkdir -p /home/nod/nod_spike && chown nod:nod /home/nod/nod_spike"]
+  - [bash, -c, "nvidia-smi > /var/log/nod-nvidia-smi.txt 2>&1 || true"]
+
+final_message: "Nod VM ready after $UPTIME s. Next: ssh nod@<ip>, then docs/runbooks/day1-spike.md section 8.2."

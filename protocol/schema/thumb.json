@@ -1,0 +1,73 @@
+{
+  "$id": "https://nod.invalid/schema/thumb.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Header for the binary JPEG frame that follows it (at most 5 fps).",
+  "properties": {
+    "camera": {
+      "title": "Camera",
+      "type": "string"
+    },
+    "h": {
+      "title": "H",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "step": {
+      "title": "Step",
+      "type": "integer"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "thumb",
+      "default": "thumb",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    },
+    "w": {
+      "title": "W",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "camera",
+    "w",
+    "h",
+    "step"
+  ],
+  "title": "Thumb",
+  "type": "object"
+}

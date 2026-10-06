@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "Frame": {
+      "description": "One captured image. `jpeg` is msgpack bin on ZMQ, base64 in JSON.",
+      "properties": {
+        "camera": {
+          "title": "Camera",
+          "type": "string"
+        },
+        "h": {
+          "title": "H",
+          "type": "integer"
+        },
+        "jpeg": {
+          "contentEncoding": "base64",
+          "title": "Jpeg",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "w": {
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "camera",
+        "w",
+        "h",
+        "jpeg",
+        "step"
+      ],
+      "title": "Frame",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/sim.frames.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "frames": {
+      "items": {
+        "$ref": "#/$defs/Frame"
+      },
+      "title": "Frames",
+      "type": "array"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "step": {
+      "title": "Step",
+      "type": "integer"
+    },
+    "type": {
+      "const": "sim.frames",
+      "default": "sim.frames",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "step",
+    "frames"
+  ],
+  "title": "SimFrames",
+  "type": "object"
+}

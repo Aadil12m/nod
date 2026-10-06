@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "Limits": {
+      "description": "Execution-time limits enforced in the sim loop (5.3).",
+      "properties": {
+        "eef_box": {
+          "default": [
+            [
+              -0.4,
+              -0.4,
+              0.85
+            ],
+            [
+              0.2,
+              0.4,
+              1.35
+            ]
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Eef Box",
+          "type": "array"
+        },
+        "max_abs_action": {
+          "default": 1.0,
+          "title": "Max Abs Action",
+          "type": "number"
+        }
+      },
+      "required": [
+        "eef_box",
+        "max_abs_action"
+      ],
+      "title": "Limits",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/ctl.run_scripted.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Run one scripted waypoint motion (`ctl.run_scripted`).",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "limits": {
+      "$ref": "#/$defs/Limits"
+    },
+    "max_steps": {
+      "default": 160,
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "script": {
+      "enum": [
+        "return_home",
+        "reset_scene",
+        "close_middle_drawer",
+        "handover_retreat"
+      ],
+      "title": "Script",
+      "type": "string"
+    },
+    "type": {
+      "const": "ctl.run_scripted",
+      "default": "ctl.run_scripted",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "run_id",
+    "epoch",
+    "script",
+    "max_steps",
+    "limits"
+  ],
+  "title": "RunScripted",
+  "type": "object"
+}

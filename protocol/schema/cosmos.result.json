@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "OracleAtom": {
+      "properties": {
+        "atom": {
+          "title": "Atom",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "atom",
+        "value"
+      ],
+      "title": "OracleAtom",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/cosmos.result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "agree": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agree"
+    },
+    "answer": {
+      "enum": [
+        "yes",
+        "no",
+        "unsure"
+      ],
+      "title": "Answer",
+      "type": "string"
+    },
+    "check_id": {
+      "title": "Check Id",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "done",
+        "failed",
+        "uncertain",
+        "proceed",
+        "block"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "latency_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+    },
+    "oracle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OracleAtom"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "cosmos.result",
+      "default": "cosmos.result",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "check_id",
+    "answer",
+    "reason",
+    "latency_ms",
+    "oracle",
+    "agree",
+    "decision"
+  ],
+  "title": "CosmosResult",
+  "type": "object"
+}

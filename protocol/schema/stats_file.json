@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "ChainStats": {
+      "additionalProperties": false,
+      "description": "Whole-chain result from the nightly job (e.g. chain \"A\").",
+      "properties": {
+        "k": {
+          "minimum": 0,
+          "title": "K",
+          "type": "integer"
+        },
+        "median_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median S"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "skill_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skill Ids",
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/StatBlock"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "skill_ids",
+        "k",
+        "n",
+        "wilson_lo"
+      ],
+      "title": "ChainStats",
+      "type": "object"
+    },
+    "SkillStats": {
+      "additionalProperties": false,
+      "description": "Per-skill stats: alone (fresh table) and in_chain (after other skills, no reset).",
+      "properties": {
+        "alone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "in_chain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "placeholder": {
+          "default": false,
+          "title": "Placeholder",
+          "type": "boolean"
+        }
+      },
+      "title": "SkillStats",
+      "type": "object"
+    },
+    "StatBlock": {
+      "additionalProperties": false,
+      "description": "Measured success: k of n episodes, Wilson lower bound, median duration of successes.",
+      "properties": {
+        "k": {
+          "minimum": 0,
+          "title": "K",
+          "type": "integer"
+        },
+        "median_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median S"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "k",
+        "n",
+        "wilson_lo"
+      ],
+      "title": "StatBlock",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/stats_file.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {
+    "$ref": "#/$defs/SkillStats"
+  },
+  "description": "`registry/stats/latest.json`. Skill entries sit at the top level, keyed by skill id.",
+  "properties": {
+    "_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "At"
+    },
+    "chains": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ChainStats"
+      },
+      "title": "Chains",
+      "type": "object"
+    },
+    "git_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Git Sha"
+    },
+    "job_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Job Id"
+    },
+    "placeholder": {
+      "default": false,
+      "title": "Placeholder",
+      "type": "boolean"
+    }
+  },
+  "title": "StatsFile",
+  "type": "object"
+}

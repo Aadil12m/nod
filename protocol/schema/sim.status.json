@@ -1,0 +1,112 @@
+{
+  "$id": "https://nod.invalid/schema/sim.status.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Run progress from the sim loop.\n\nphase: executing (stepping), paused (ctl.pause or hb_lost), done (finished; for a\npolicy skill `success` is the goal predicate), failed (budget or fault), aborted\n(ctl.abort or e-stop), idle (no run in flight).",
+  "properties": {
+    "epoch": {
+      "title": "Epoch",
+      "type": "integer"
+    },
+    "fault": {
+      "anyOf": [
+        {
+          "enum": [
+            "eef_out_of_box",
+            "policy_timeout",
+            "nan_action",
+            "hb_lost",
+            "budget"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fault"
+    },
+    "phase": {
+      "enum": [
+        "idle",
+        "executing",
+        "paused",
+        "done",
+        "failed",
+        "aborted"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "policy_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Ms"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "step": {
+      "title": "Step",
+      "type": "integer"
+    },
+    "step_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Step Ms"
+    },
+    "success": {
+      "default": false,
+      "title": "Success",
+      "type": "boolean"
+    },
+    "type": {
+      "const": "sim.status",
+      "default": "sim.status",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "run_id",
+    "epoch",
+    "phase",
+    "step",
+    "success",
+    "fault",
+    "policy_ms",
+    "step_ms"
+  ],
+  "title": "SimStatus",
+  "type": "object"
+}

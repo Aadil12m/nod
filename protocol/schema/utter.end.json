@@ -1,0 +1,62 @@
+{
+  "$id": "https://nod.invalid/schema/utter.end.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "dur_ms": {
+      "title": "Dur Ms",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "utter.end",
+      "default": "utter.end",
+      "title": "Type",
+      "type": "string"
+    },
+    "utt_id": {
+      "title": "Utt Id",
+      "type": "integer"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "utt_id",
+    "dur_ms"
+  ],
+  "title": "UtterEnd",
+  "type": "object"
+}

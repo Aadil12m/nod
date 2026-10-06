@@ -1,0 +1,822 @@
+{
+  "$defs": {
+    "Calib": {
+      "description": "Calibration summary sent in `hello` (6.3). The profile itself stays on the phone.",
+      "properties": {
+        "fps": {
+          "title": "Fps",
+          "type": "number"
+        },
+        "long_blink_ms": {
+          "title": "Long Blink Ms",
+          "type": "integer"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "long_blink_ms",
+        "fps"
+      ],
+      "title": "Calib",
+      "type": "object"
+    },
+    "Gesture": {
+      "description": "Telemetry: the phone's UI state machine has already acted on the gesture.",
+      "properties": {
+        "fps": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fps"
+        },
+        "held_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Ms"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "long_blink",
+            "double_blink",
+            "brow_raise",
+            "turn_left",
+            "turn_right",
+            "jaw_hold",
+            "face_lost",
+            "face_found"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "fired",
+            "cancelled"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "pitch_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pitch Deg"
+        },
+        "scores": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Scores",
+          "type": "object"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "gesture",
+          "default": "gesture",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "yaw_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Yaw Deg"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "name",
+        "phase",
+        "held_ms",
+        "yaw_deg",
+        "pitch_deg",
+        "scores",
+        "fps"
+      ],
+      "title": "Gesture",
+      "type": "object"
+    },
+    "Hello": {
+      "properties": {
+        "app_ver": {
+          "title": "App Ver",
+          "type": "string"
+        },
+        "calib": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Calib"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "device": {
+          "title": "Device",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "resume_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resume Token"
+        },
+        "role": {
+          "default": "user",
+          "enum": [
+            "user",
+            "caregiver"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "hello",
+          "default": "hello",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "device",
+        "app_ver",
+        "role",
+        "resume_token",
+        "calib"
+      ],
+      "title": "Hello",
+      "type": "object"
+    },
+    "Ping": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "t0": {
+          "title": "T0",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ping",
+          "default": "ping",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "t0"
+      ],
+      "title": "Ping",
+      "type": "object"
+    },
+    "UiCancel": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposal Id"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ui.cancel",
+          "default": "ui.cancel",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "proposal_id",
+        "source"
+      ],
+      "title": "UiCancel",
+      "type": "object"
+    },
+    "UiConfirm": {
+      "description": "Confirm of one option. Checked by `validate_confirm` (rule R9).",
+      "properties": {
+        "focused_at": {
+          "title": "Focused At",
+          "type": "integer"
+        },
+        "gesture": {
+          "title": "Gesture",
+          "type": "string"
+        },
+        "held_ms": {
+          "title": "Held Ms",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "nonce": {
+          "title": "Nonce",
+          "type": "string"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        },
+        "proposal_id": {
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "shown_at": {
+          "title": "Shown At",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ui.confirm",
+          "default": "ui.confirm",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "proposal_id",
+        "option_id",
+        "nonce",
+        "gesture",
+        "held_ms",
+        "shown_at",
+        "focused_at"
+      ],
+      "title": "UiConfirm",
+      "type": "object"
+    },
+    "UiFocus": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        },
+        "proposal_id": {
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ui.focus",
+          "default": "ui.focus",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "proposal_id",
+        "option_id"
+      ],
+      "title": "UiFocus",
+      "type": "object"
+    },
+    "UiMenu": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ui.menu",
+          "default": "ui.menu",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "source"
+      ],
+      "title": "UiMenu",
+      "type": "object"
+    },
+    "UtterEnd": {
+      "properties": {
+        "dur_ms": {
+          "title": "Dur Ms",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "utter.end",
+          "default": "utter.end",
+          "title": "Type",
+          "type": "string"
+        },
+        "utt_id": {
+          "title": "Utt Id",
+          "type": "integer"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "utt_id",
+        "dur_ms"
+      ],
+      "title": "UtterEnd",
+      "type": "object"
+    },
+    "UtterStart": {
+      "description": "Start of an utterance. Audio follows as binary frames: [u32 LE utt_id][pcm16le samples].",
+      "properties": {
+        "fmt": {
+          "const": "pcm16le",
+          "default": "pcm16le",
+          "title": "Fmt",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "sr": {
+          "default": 16000,
+          "title": "Sr",
+          "type": "integer"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "utter.start",
+          "default": "utter.start",
+          "title": "Type",
+          "type": "string"
+        },
+        "utt_id": {
+          "title": "Utt Id",
+          "type": "integer"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "utt_id",
+        "sr",
+        "fmt"
+      ],
+      "title": "UtterStart",
+      "type": "object"
+    },
+    "UtterText": {
+      "description": "Typed text in place of speech (caregiver, or mock mode).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "sess": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sess"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "integer"
+        },
+        "type": {
+          "const": "utter.text",
+          "default": "utter.text",
+          "title": "Type",
+          "type": "string"
+        },
+        "utt_id": {
+          "title": "Utt Id",
+          "type": "integer"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "sess",
+        "seq",
+        "utt_id",
+        "text"
+      ],
+      "title": "UtterText",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/phone_in.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "gesture": "#/$defs/Gesture",
+      "hello": "#/$defs/Hello",
+      "ping": "#/$defs/Ping",
+      "ui.cancel": "#/$defs/UiCancel",
+      "ui.confirm": "#/$defs/UiConfirm",
+      "ui.focus": "#/$defs/UiFocus",
+      "ui.menu": "#/$defs/UiMenu",
+      "utter.end": "#/$defs/UtterEnd",
+      "utter.start": "#/$defs/UtterStart",
+      "utter.text": "#/$defs/UtterText"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Hello"
+    },
+    {
+      "$ref": "#/$defs/Gesture"
+    },
+    {
+      "$ref": "#/$defs/UiMenu"
+    },
+    {
+      "$ref": "#/$defs/UiFocus"
+    },
+    {
+      "$ref": "#/$defs/UiConfirm"
+    },
+    {
+      "$ref": "#/$defs/UiCancel"
+    },
+    {
+      "$ref": "#/$defs/UtterStart"
+    },
+    {
+      "$ref": "#/$defs/UtterEnd"
+    },
+    {
+      "$ref": "#/$defs/UtterText"
+    },
+    {
+      "$ref": "#/$defs/Ping"
+    }
+  ],
+  "title": "Messages the gateway accepts on /ws/phone"
+}

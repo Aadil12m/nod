@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "ModelPatch": {
+      "description": "Fixture placement LIBERO writes into model.body_pos/body_quat at reset, keyed by body name.",
+      "properties": {
+        "body_pos": {
+          "additionalProperties": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Body Pos",
+          "type": "object"
+        },
+        "body_quat": {
+          "additionalProperties": {
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Body Quat",
+          "type": "object"
+        }
+      },
+      "required": [
+        "body_pos",
+        "body_quat"
+      ],
+      "title": "ModelPatch",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/sim.episode_header.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body_names": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Body Names",
+      "type": "array"
+    },
+    "dyn_body_ids": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Dyn Body Ids",
+      "type": "array"
+    },
+    "mj_ver": {
+      "title": "Mj Ver",
+      "type": "string"
+    },
+    "model_hash": {
+      "title": "Model Hash",
+      "type": "string"
+    },
+    "model_patch": {
+      "$ref": "#/$defs/ModelPatch"
+    },
+    "scene_id": {
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "sim.episode_header",
+      "default": "sim.episode_header",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "scene_id",
+    "model_hash",
+    "mj_ver",
+    "body_names",
+    "dyn_body_ids",
+    "model_patch"
+  ],
+  "title": "SimEpisodeHeader",
+  "type": "object"
+}

@@ -1,0 +1,1269 @@
+{
+  "$defs": {
+    "Abort": {
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.abort",
+          "default": "ctl.abort",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "epoch"
+      ],
+      "title": "Abort",
+      "type": "object"
+    },
+    "Capture": {
+      "properties": {
+        "cameras": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cameras",
+          "type": "array"
+        },
+        "h": {
+          "default": 480,
+          "title": "H",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.capture",
+          "default": "ctl.capture",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "w": {
+          "default": 640,
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "cameras",
+        "w",
+        "h"
+      ],
+      "title": "Capture",
+      "type": "object"
+    },
+    "CtlEStop": {
+      "description": "Sent on the dedicated PUSH->PULL e-stop socket (port 5561).",
+      "properties": {
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "t_gw": {
+          "title": "T Gw",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ctl.estop",
+          "default": "ctl.estop",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "estop_seq",
+        "t_gw"
+      ],
+      "title": "CtlEStop",
+      "type": "object"
+    },
+    "CtlHeartbeat": {
+      "description": "Relayed every 100 ms only while the phone heartbeat is fresh (5.6).",
+      "properties": {
+        "phone_ok": {
+          "title": "Phone Ok",
+          "type": "boolean"
+        },
+        "t": {
+          "title": "T",
+          "type": "integer"
+        },
+        "type": {
+          "const": "ctl.hb",
+          "default": "ctl.hb",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "t",
+        "phone_ok"
+      ],
+      "title": "CtlHeartbeat",
+      "type": "object"
+    },
+    "Eef": {
+      "description": "End-effector position and binarised gripper state.",
+      "properties": {
+        "gripper": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "title": "Gripper",
+          "type": "string"
+        },
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "gripper",
+        "quat"
+      ],
+      "title": "Eef",
+      "type": "object"
+    },
+    "Frame": {
+      "description": "One captured image. `jpeg` is msgpack bin on ZMQ, base64 in JSON.",
+      "properties": {
+        "camera": {
+          "title": "Camera",
+          "type": "string"
+        },
+        "h": {
+          "title": "H",
+          "type": "integer"
+        },
+        "jpeg": {
+          "contentEncoding": "base64",
+          "title": "Jpeg",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "w": {
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "camera",
+        "w",
+        "h",
+        "jpeg",
+        "step"
+      ],
+      "title": "Frame",
+      "type": "object"
+    },
+    "Limits": {
+      "description": "Execution-time limits enforced in the sim loop (5.3).",
+      "properties": {
+        "eef_box": {
+          "default": [
+            [
+              -0.4,
+              -0.4,
+              0.85
+            ],
+            [
+              0.2,
+              0.4,
+              1.35
+            ]
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Eef Box",
+          "type": "array"
+        },
+        "max_abs_action": {
+          "default": 1.0,
+          "title": "Max Abs Action",
+          "type": "number"
+        }
+      },
+      "required": [
+        "eef_box",
+        "max_abs_action"
+      ],
+      "title": "Limits",
+      "type": "object"
+    },
+    "LoadScene": {
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "init_index": {
+          "default": 0,
+          "title": "Init Index",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.load_scene",
+          "default": "ctl.load_scene",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "scene_id",
+        "init_index",
+        "epoch"
+      ],
+      "title": "LoadScene",
+      "type": "object"
+    },
+    "ModelPatch": {
+      "description": "Fixture placement LIBERO writes into model.body_pos/body_quat at reset, keyed by body name.",
+      "properties": {
+        "body_pos": {
+          "additionalProperties": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Body Pos",
+          "type": "object"
+        },
+        "body_quat": {
+          "additionalProperties": {
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Body Quat",
+          "type": "object"
+        }
+      },
+      "required": [
+        "body_pos",
+        "body_quat"
+      ],
+      "title": "ModelPatch",
+      "type": "object"
+    },
+    "ObjPose": {
+      "description": "Pose of one object in the sim world frame (metres). `quat` is optional.",
+      "properties": {
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "quat"
+      ],
+      "title": "ObjPose",
+      "type": "object"
+    },
+    "Pause": {
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.pause",
+          "default": "ctl.pause",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "epoch"
+      ],
+      "title": "Pause",
+      "type": "object"
+    },
+    "Pose": {
+      "description": "Body poses for the viewer, published on port 5563.\n\nArrays are float32; see `nod_protocol.arrays` for the wire format.\nxpos is [nb, 3], xquat is [nb, 4] (w, x, y, z), qpos is [nq].",
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "qpos": {
+          "additionalProperties": false,
+          "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+          "properties": {
+            "data": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "dtype": {
+              "const": "<f4",
+              "type": "string"
+            },
+            "shape": {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "dtype",
+            "shape",
+            "data"
+          ],
+          "title": "Float32Array",
+          "type": "object"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "t_sim": {
+          "title": "T Sim",
+          "type": "number"
+        },
+        "t_wall": {
+          "title": "T Wall",
+          "type": "number"
+        },
+        "type": {
+          "const": "pose",
+          "default": "pose",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "xpos": {
+          "additionalProperties": false,
+          "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+          "properties": {
+            "data": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "dtype": {
+              "const": "<f4",
+              "type": "string"
+            },
+            "shape": {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "dtype",
+            "shape",
+            "data"
+          ],
+          "title": "Float32Array",
+          "type": "object"
+        },
+        "xquat": {
+          "additionalProperties": false,
+          "description": "Raw little-endian float32 array: decode with np.frombuffer(data, '<f4').reshape(shape). data is msgpack bin on ZMQ and base64 text in JSON.",
+          "properties": {
+            "data": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "dtype": {
+              "const": "<f4",
+              "type": "string"
+            },
+            "shape": {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "dtype",
+            "shape",
+            "data"
+          ],
+          "title": "Float32Array",
+          "type": "object"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "epoch",
+        "step",
+        "t_sim",
+        "t_wall",
+        "xpos",
+        "xquat",
+        "qpos"
+      ],
+      "title": "Pose",
+      "type": "object"
+    },
+    "Resume": {
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.resume",
+          "default": "ctl.resume",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "epoch"
+      ],
+      "title": "Resume",
+      "type": "object"
+    },
+    "RunScripted": {
+      "description": "Run one scripted waypoint motion (`ctl.run_scripted`).",
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        },
+        "max_steps": {
+          "default": 160,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "script": {
+          "enum": [
+            "return_home",
+            "reset_scene",
+            "close_middle_drawer",
+            "handover_retreat"
+          ],
+          "title": "Script",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.run_scripted",
+          "default": "ctl.run_scripted",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "run_id",
+        "epoch",
+        "script",
+        "max_steps",
+        "limits"
+      ],
+      "title": "RunScripted",
+      "type": "object"
+    },
+    "RunSkill": {
+      "description": "Run one learned policy skill (`ctl.run_skill`).",
+      "properties": {
+        "action_scale": {
+          "default": 1.0,
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Action Scale",
+          "type": "number"
+        },
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "goal_ref": {
+          "title": "Goal Ref",
+          "type": "string"
+        },
+        "instruction": {
+          "title": "Instruction",
+          "type": "string"
+        },
+        "kind": {
+          "const": "policy",
+          "default": "policy",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        },
+        "max_steps": {
+          "default": 400,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "n_action_steps": {
+          "default": 8,
+          "title": "N Action Steps",
+          "type": "integer"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "skill_id": {
+          "title": "Skill Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.run_skill",
+          "default": "ctl.run_skill",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "run_id",
+        "epoch",
+        "skill_id",
+        "kind",
+        "instruction",
+        "goal_ref",
+        "n_action_steps",
+        "max_steps",
+        "limits",
+        "action_scale"
+      ],
+      "title": "RunSkill",
+      "type": "object"
+    },
+    "SimAck": {
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "sim.ack",
+          "default": "sim.ack",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "ok",
+        "error"
+      ],
+      "title": "SimAck",
+      "type": "object"
+    },
+    "SimEStopAck": {
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "estop_seq": {
+          "title": "Estop Seq",
+          "type": "integer"
+        },
+        "stopped_at_step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stopped At Step"
+        },
+        "t_halt": {
+          "title": "T Halt",
+          "type": "integer"
+        },
+        "t_rx": {
+          "title": "T Rx",
+          "type": "integer"
+        },
+        "type": {
+          "const": "sim.estop_ack",
+          "default": "sim.estop_ack",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "estop_seq",
+        "epoch",
+        "stopped_at_step",
+        "t_rx",
+        "t_halt"
+      ],
+      "title": "SimEStopAck",
+      "type": "object"
+    },
+    "SimEpisodeHeader": {
+      "properties": {
+        "body_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Body Names",
+          "type": "array"
+        },
+        "dyn_body_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Dyn Body Ids",
+          "type": "array"
+        },
+        "mj_ver": {
+          "title": "Mj Ver",
+          "type": "string"
+        },
+        "model_hash": {
+          "title": "Model Hash",
+          "type": "string"
+        },
+        "model_patch": {
+          "$ref": "#/$defs/ModelPatch"
+        },
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "sim.episode_header",
+          "default": "sim.episode_header",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "scene_id",
+        "model_hash",
+        "mj_ver",
+        "body_names",
+        "dyn_body_ids",
+        "model_patch"
+      ],
+      "title": "SimEpisodeHeader",
+      "type": "object"
+    },
+    "SimFrames": {
+      "properties": {
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/Frame"
+          },
+          "title": "Frames",
+          "type": "array"
+        },
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "type": {
+          "const": "sim.frames",
+          "default": "sim.frames",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id",
+        "step",
+        "frames"
+      ],
+      "title": "SimFrames",
+      "type": "object"
+    },
+    "SimStatus": {
+      "description": "Run progress from the sim loop.\n\nphase: executing (stepping), paused (ctl.pause or hb_lost), done (finished; for a\npolicy skill `success` is the goal predicate), failed (budget or fault), aborted\n(ctl.abort or e-stop), idle (no run in flight).",
+      "properties": {
+        "epoch": {
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "fault": {
+          "anyOf": [
+            {
+              "enum": [
+                "eef_out_of_box",
+                "policy_timeout",
+                "nan_action",
+                "hb_lost",
+                "budget"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fault"
+        },
+        "phase": {
+          "enum": [
+            "idle",
+            "executing",
+            "paused",
+            "done",
+            "failed",
+            "aborted"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "policy_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Ms"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "step_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step Ms"
+        },
+        "success": {
+          "default": false,
+          "title": "Success",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "sim.status",
+          "default": "sim.status",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "run_id",
+        "epoch",
+        "phase",
+        "step",
+        "success",
+        "fault",
+        "policy_ms",
+        "step_ms"
+      ],
+      "title": "SimStatus",
+      "type": "object"
+    },
+    "SimWorld": {
+      "description": "`sim.world`: a WorldState on the wire. Use `.to_world()` for the bare model.",
+      "properties": {
+        "atoms": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Atoms",
+          "type": "object"
+        },
+        "eef": {
+          "$ref": "#/$defs/Eef"
+        },
+        "objects": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ObjPose"
+          },
+          "title": "Objects",
+          "type": "object"
+        },
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "t_sim": {
+          "title": "T Sim",
+          "type": "number"
+        },
+        "type": {
+          "const": "sim.world",
+          "default": "sim.world",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scene_id",
+        "step",
+        "t_sim",
+        "atoms",
+        "objects",
+        "eef",
+        "v",
+        "type"
+      ],
+      "title": "SimWorld",
+      "type": "object"
+    },
+    "WorldRequest": {
+      "properties": {
+        "req_id": {
+          "title": "Req Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "ctl.world",
+          "default": "ctl.world",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "req_id"
+      ],
+      "title": "WorldRequest",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/zmq_message.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "ctl.abort": "#/$defs/Abort",
+      "ctl.capture": "#/$defs/Capture",
+      "ctl.estop": "#/$defs/CtlEStop",
+      "ctl.hb": "#/$defs/CtlHeartbeat",
+      "ctl.load_scene": "#/$defs/LoadScene",
+      "ctl.pause": "#/$defs/Pause",
+      "ctl.resume": "#/$defs/Resume",
+      "ctl.run_scripted": "#/$defs/RunScripted",
+      "ctl.run_skill": "#/$defs/RunSkill",
+      "ctl.world": "#/$defs/WorldRequest",
+      "pose": "#/$defs/Pose",
+      "sim.ack": "#/$defs/SimAck",
+      "sim.episode_header": "#/$defs/SimEpisodeHeader",
+      "sim.estop_ack": "#/$defs/SimEStopAck",
+      "sim.frames": "#/$defs/SimFrames",
+      "sim.status": "#/$defs/SimStatus",
+      "sim.world": "#/$defs/SimWorld"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/LoadScene"
+    },
+    {
+      "$ref": "#/$defs/RunSkill"
+    },
+    {
+      "$ref": "#/$defs/RunScripted"
+    },
+    {
+      "$ref": "#/$defs/Pause"
+    },
+    {
+      "$ref": "#/$defs/Resume"
+    },
+    {
+      "$ref": "#/$defs/Abort"
+    },
+    {
+      "$ref": "#/$defs/Capture"
+    },
+    {
+      "$ref": "#/$defs/WorldRequest"
+    },
+    {
+      "$ref": "#/$defs/CtlHeartbeat"
+    },
+    {
+      "$ref": "#/$defs/CtlEStop"
+    },
+    {
+      "$ref": "#/$defs/SimAck"
+    },
+    {
+      "$ref": "#/$defs/SimStatus"
+    },
+    {
+      "$ref": "#/$defs/SimEStopAck"
+    },
+    {
+      "$ref": "#/$defs/SimWorld"
+    },
+    {
+      "$ref": "#/$defs/SimFrames"
+    },
+    {
+      "$ref": "#/$defs/SimEpisodeHeader"
+    },
+    {
+      "$ref": "#/$defs/Pose"
+    }
+  ],
+  "title": "Any ZMQ msgpack message (discriminated on type)"
+}

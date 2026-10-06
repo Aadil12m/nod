@@ -1,0 +1,98 @@
+{
+  "name": "nod_plan",
+  "schema": {
+    "additionalProperties": false,
+    "properties": {
+      "clarify_question": {
+        "maxLength": 60,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "intent": {
+        "enum": [
+          "manipulate",
+          "home",
+          "caregiver",
+          "clarify",
+          "none"
+        ],
+        "type": "string"
+      },
+      "options": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "home_action": {
+              "enum": [
+                "lights_on",
+                "lights_off",
+                "call_caregiver",
+                null
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "enum": [
+                "skill",
+                "plan",
+                "home"
+              ],
+              "type": "string"
+            },
+            "plan": {
+              "items": {
+                "enum": [
+                  "<POLICY_AND_CUSTOM_IDS>"
+                ],
+                "type": "string"
+              },
+              "maxItems": 4,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "skill_id": {
+              "enum": [
+                "<FEASIBLE_IDS>",
+                null
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "maxLength": 80,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "skill_id",
+            "plan",
+            "home_action",
+            "why"
+          ],
+          "type": "object"
+        },
+        "maxItems": 3,
+        "minItems": 0,
+        "type": "array"
+      }
+    },
+    "required": [
+      "intent",
+      "clarify_question",
+      "options"
+    ],
+    "type": "object"
+  },
+  "strict": true
+}

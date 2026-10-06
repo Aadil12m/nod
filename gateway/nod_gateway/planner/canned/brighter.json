@@ -1,0 +1,14 @@
+{
+  "transcript": "Make it brighter",
+  "match": "too dark|brighter",
+  "model": "nvidia/Nemotron-3_5-Lightning",
+  "recorded": false,
+  "note": "Hand-written from the 7.3 few-shot example.",
+  "output": {
+    "intent": "home",
+    "clarify_question": null,
+    "options": [
+      {"kind": "home", "skill_id": null, "plan": null, "home_action": "lights_on", "why": "Turns the room lights on"}
+    ]
+  }
+}

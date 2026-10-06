@@ -1,0 +1,91 @@
+{
+  "$id": "https://nod.invalid/schema/state.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "estop_seq": {
+      "title": "Estop Seq",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "IDLE",
+        "LISTENING",
+        "PLANNING",
+        "AWAITING_CONFIRM",
+        "COUNTDOWN",
+        "EXECUTING",
+        "POSTCHECK",
+        "PAUSED",
+        "ESTOPPED"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "scene_id": {
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "state",
+      "default": "state",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "mode",
+    "run_id",
+    "scene_id",
+    "estop_seq"
+  ],
+  "title": "State",
+  "type": "object"
+}

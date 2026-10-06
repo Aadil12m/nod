@@ -1,0 +1,224 @@
+{
+  "_note": "PLACEHOLDER until the nightly job runs. These numbers are invented to make mock mode show badges; they are not measurements.",
+  "at": "2026-10-05T00:00:00Z",
+  "bottle_on_cabinet": {
+    "alone": {
+      "k": 18,
+      "median_s": 11.9,
+      "n": 20,
+      "wilson_lo": 0.699
+    },
+    "in_chain": {
+      "k": 15,
+      "median_s": 12.8,
+      "n": 20,
+      "wilson_lo": 0.5313
+    }
+  },
+  "bottle_on_rack": {
+    "alone": {
+      "k": 19,
+      "median_s": 11.2,
+      "n": 20,
+      "wilson_lo": 0.7639
+    },
+    "in_chain": {
+      "k": 18,
+      "median_s": 12.0,
+      "n": 20,
+      "wilson_lo": 0.699
+    }
+  },
+  "bowl_in_top_drawer": {
+    "alone": {
+      "k": 16,
+      "median_s": 14.7,
+      "n": 20,
+      "wilson_lo": 0.584
+    },
+    "in_chain": {
+      "k": 12,
+      "median_s": 16.0,
+      "n": 20,
+      "wilson_lo": 0.3866
+    }
+  },
+  "bowl_on_cabinet": {
+    "alone": {
+      "k": 19,
+      "median_s": 9.9,
+      "n": 20,
+      "wilson_lo": 0.7639
+    },
+    "in_chain": {
+      "k": 14,
+      "median_s": 11.1,
+      "n": 20,
+      "wilson_lo": 0.481
+    }
+  },
+  "bowl_on_plate": {
+    "alone": {
+      "k": 19,
+      "median_s": 9.6,
+      "n": 20,
+      "wilson_lo": 0.7639
+    },
+    "in_chain": {
+      "k": 19,
+      "median_s": 10.4,
+      "n": 20,
+      "wilson_lo": 0.7639
+    }
+  },
+  "bowl_on_stove": {
+    "alone": {
+      "k": 19,
+      "median_s": 9.8,
+      "n": 20,
+      "wilson_lo": 0.7639
+    },
+    "in_chain": {
+      "k": 15,
+      "median_s": 10.9,
+      "n": 20,
+      "wilson_lo": 0.5313
+    }
+  },
+  "bowl_to_user": {
+    "alone": {
+      "k": 17,
+      "median_s": 11.6,
+      "n": 20,
+      "wilson_lo": 0.6396
+    },
+    "in_chain": {
+      "k": 15,
+      "median_s": 12.7,
+      "n": 20,
+      "wilson_lo": 0.5313
+    }
+  },
+  "chains": {
+    "A": {
+      "k": 15,
+      "median_s": 41.0,
+      "n": 20,
+      "skill_ids": [
+        "bottle_on_rack",
+        "open_middle_drawer",
+        "cheese_in_bowl",
+        "plate_to_stove_front"
+      ],
+      "steps": [
+        {
+          "k": 19,
+          "n": 20,
+          "wilson_lo": 0.7639
+        },
+        {
+          "k": 18,
+          "n": 19,
+          "wilson_lo": 0.7536
+        },
+        {
+          "k": 16,
+          "n": 18,
+          "wilson_lo": 0.672
+        },
+        {
+          "k": 15,
+          "n": 16,
+          "wilson_lo": 0.7167
+        }
+      ],
+      "wilson_lo": 0.5313
+    },
+    "B": {
+      "k": 12,
+      "median_s": 36.5,
+      "n": 20,
+      "skill_ids": [
+        "bowl_on_plate",
+        "cheese_in_bowl",
+        "bowl_to_user"
+      ],
+      "steps": [
+        {
+          "k": 19,
+          "n": 20,
+          "wilson_lo": 0.7639
+        },
+        {
+          "k": 16,
+          "n": 19,
+          "wilson_lo": 0.6243
+        },
+        {
+          "k": 12,
+          "n": 16,
+          "wilson_lo": 0.505
+        }
+      ],
+      "wilson_lo": 0.3866
+    }
+  },
+  "cheese_in_bowl": {
+    "alone": {
+      "k": 38,
+      "median_s": 7.8,
+      "n": 40,
+      "wilson_lo": 0.835
+    },
+    "in_chain": {
+      "k": 18,
+      "median_s": 8.9,
+      "n": 20,
+      "wilson_lo": 0.699
+    }
+  },
+  "job_id": "placeholder",
+  "open_middle_drawer": {
+    "alone": {
+      "k": 20,
+      "median_s": 7.1,
+      "n": 20,
+      "wilson_lo": 0.8389
+    },
+    "in_chain": {
+      "k": 19,
+      "median_s": 7.6,
+      "n": 20,
+      "wilson_lo": 0.7639
+    }
+  },
+  "placeholder": true,
+  "plate_to_stove_front": {
+    "alone": {
+      "k": 19,
+      "median_s": 7.4,
+      "n": 20,
+      "wilson_lo": 0.7639
+    },
+    "in_chain": {
+      "k": 17,
+      "median_s": 8.2,
+      "n": 20,
+      "wilson_lo": 0.6396
+    }
+  },
+  "stove_on": {
+    "alone": {
+      "k": 20,
+      "median_s": 5.2,
+      "n": 20,
+      "wilson_lo": 0.8389
+    },
+    "in_chain": {
+      "k": 18,
+      "median_s": 5.9,
+      "n": 20,
+      "wilson_lo": 0.699
+    }
+  }
+}

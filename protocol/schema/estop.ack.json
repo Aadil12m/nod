@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "LatMs": {
+      "description": "E-stop latency breakdown in ms (5.5).",
+      "properties": {
+        "gw_sim": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gw Sim"
+        },
+        "phone_gw": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phone Gw"
+        },
+        "sim_halt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sim Halt"
+        }
+      },
+      "required": [
+        "phone_gw",
+        "gw_sim",
+        "sim_halt"
+      ],
+      "title": "LatMs",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/estop.ack.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "estop_seq": {
+      "title": "Estop Seq",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "lat_ms": {
+      "$ref": "#/$defs/LatMs"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "stopped_at_step": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stopped At Step"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "estop.ack",
+      "default": "estop.ack",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "estop_seq",
+    "stopped_at_step",
+    "lat_ms"
+  ],
+  "title": "EStopAck",
+  "type": "object"
+}

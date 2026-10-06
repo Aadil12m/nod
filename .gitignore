@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-*/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+
+# Secrets and local config (never commit these)
+.env
+.env.*
+!.env.example
+sa.json
+*.pem
+*-credentials.json
+
+# Run output, model weights, spike artifacts
+runs/
+checkpoints/
+ckpt/
+*.safetensors
+nod_spike/
+day1_artifacts/
+
+# Mock library: fetched from the GitHub release with `make fetch-mock`
+recordings/*
+!recordings/README.md
+dist/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+results/

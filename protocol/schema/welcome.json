@@ -1,0 +1,72 @@
+{
+  "$id": "https://nod.invalid/schema/welcome.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "lease": {
+      "enum": [
+        "user",
+        "caregiver",
+        "none"
+      ],
+      "title": "Lease",
+      "type": "string"
+    },
+    "resume_token": {
+      "title": "Resume Token",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "server_time": {
+      "title": "Server Time",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "welcome",
+      "default": "welcome",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "resume_token",
+    "lease",
+    "server_time"
+  ],
+  "title": "Welcome",
+  "type": "object"
+}

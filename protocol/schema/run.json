@@ -1,0 +1,233 @@
+{
+  "$defs": {
+    "CosmosVerdict": {
+      "description": "Compact Cosmos outcome embedded in a `run` update.",
+      "properties": {
+        "answer": {
+          "enum": [
+            "yes",
+            "no",
+            "unsure"
+          ],
+          "title": "Answer",
+          "type": "string"
+        },
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "done",
+            "failed",
+            "uncertain",
+            "proceed",
+            "block"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "pre",
+            "post"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "phase",
+        "answer",
+        "reason",
+        "decision"
+      ],
+      "title": "CosmosVerdict",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/run.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Progress of the run in flight (`type: \"run\"`).",
+  "properties": {
+    "cosmos": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CosmosVerdict"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "elapsed_ms": {
+      "default": 0,
+      "title": "Elapsed Ms",
+      "type": "integer"
+    },
+    "fault": {
+      "anyOf": [
+        {
+          "enum": [
+            "eef_out_of_box",
+            "policy_timeout",
+            "nan_action",
+            "hb_lost",
+            "budget"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fault"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "option_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Option Id"
+    },
+    "oracle": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Oracle"
+    },
+    "phase": {
+      "enum": [
+        "countdown",
+        "precheck",
+        "executing",
+        "returning_home",
+        "postcheck",
+        "done",
+        "failed",
+        "uncertain",
+        "aborted",
+        "paused"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "plan_len": {
+      "default": 1,
+      "title": "Plan Len",
+      "type": "integer"
+    },
+    "plan_step": {
+      "default": 0,
+      "title": "Plan Step",
+      "type": "integer"
+    },
+    "proposal_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposal Id"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "sim_step": {
+      "default": 0,
+      "title": "Sim Step",
+      "type": "integer"
+    },
+    "skill_id": {
+      "title": "Skill Id",
+      "type": "string"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "run",
+      "default": "run",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "run_id",
+    "proposal_id",
+    "option_id",
+    "plan_step",
+    "plan_len",
+    "skill_id",
+    "phase",
+    "sim_step",
+    "max_steps",
+    "elapsed_ms",
+    "cosmos",
+    "oracle",
+    "fault"
+  ],
+  "title": "RunUpdate",
+  "type": "object"
+}

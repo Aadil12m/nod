@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nod-sim"
+version = "0.1.0"
+description = "Nod sim runner: interruptible LIBERO-Goal control loop, goal swapping, scripted skills, oracle, recorder"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+  "nod-protocol",          # ../protocol (pip install -e ../protocol)
+  "numpy>=1.24",
+  "pyzmq>=25",
+]
+
+[project.optional-dependencies]
+# The real simulator. Install exactly as in sim/README.md (LIBERO itself comes from git).
+libero = ["robosuite==1.4.0", "mujoco==3.3.1", "numpy==1.26.4", "bddl==1.0.1", "easydict", "termcolor",
+          "pyyaml", "imageio", "opencv-python-headless", "gym==0.25.2", "cloudpickle", "future", "tqdm", "PyOpenGL"]
+# Talking to the Isaac-GR00T policy server without installing gr00t.
+groot = ["msgpack>=1.0", "msgpack-numpy>=0.4.8"]
+media = ["pillow>=10", "imageio>=2.30", "imageio-ffmpeg>=0.5"]
+test = ["pytest>=8", "pillow>=10", "msgpack-numpy>=0.4.8", "h5py>=3.9"]
+
+[project.scripts]
+nod-sim = "nod_sim.runner:main"
+
+[tool.setuptools]
+packages = ["nod_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,161 @@
+{
+  "$defs": {
+    "FrameRef": {
+      "description": "Which captured frame a check looked at. The image bytes travel separately.",
+      "properties": {
+        "camera": {
+          "title": "Camera",
+          "type": "string"
+        },
+        "h": {
+          "title": "H",
+          "type": "integer"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        },
+        "w": {
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "camera",
+        "w",
+        "h",
+        "step"
+      ],
+      "title": "FrameRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/cosmos.check.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request to the verifier (`Verifier.check`). Pre-checks run before a run exists,\nso `run_id` may be null; `proposal_id`/`option_id` identify the card instead.",
+  "properties": {
+    "check_id": {
+      "title": "Check Id",
+      "type": "string"
+    },
+    "frames": {
+      "items": {
+        "$ref": "#/$defs/FrameRef"
+      },
+      "title": "Frames",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "model": {
+      "default": "nvidia/Cosmos-Reason2-8B",
+      "title": "Model",
+      "type": "string"
+    },
+    "option_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Option Id"
+    },
+    "phase": {
+      "enum": [
+        "pre",
+        "post"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "proposal_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposal Id"
+    },
+    "question": {
+      "title": "Question",
+      "type": "string"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "skill_id": {
+      "title": "Skill Id",
+      "type": "string"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "cosmos.check",
+      "default": "cosmos.check",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "check_id",
+    "run_id",
+    "proposal_id",
+    "option_id",
+    "phase",
+    "skill_id",
+    "question",
+    "frames",
+    "model"
+  ],
+  "title": "CosmosCheck",
+  "type": "object"
+}

@@ -1,0 +1,52 @@
+{
+  "$id": "https://nod.invalid/schema/home_result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Return value of `Home.call` (4.2.2). Not a wire message.",
+  "properties": {
+    "action": {
+      "enum": [
+        "lights_on",
+        "lights_off",
+        "call_caregiver"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "latency_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "action",
+    "ok",
+    "detail",
+    "latency_ms"
+  ],
+  "title": "HomeResult",
+  "type": "object"
+}

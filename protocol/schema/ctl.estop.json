@@ -1,0 +1,34 @@
+{
+  "$id": "https://nod.invalid/schema/ctl.estop.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Sent on the dedicated PUSH->PULL e-stop socket (port 5561).",
+  "properties": {
+    "estop_seq": {
+      "title": "Estop Seq",
+      "type": "integer"
+    },
+    "t_gw": {
+      "title": "T Gw",
+      "type": "integer"
+    },
+    "type": {
+      "const": "ctl.estop",
+      "default": "ctl.estop",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "estop_seq",
+    "t_gw"
+  ],
+  "title": "CtlEStop",
+  "type": "object"
+}

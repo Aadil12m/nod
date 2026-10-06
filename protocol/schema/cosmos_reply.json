@@ -1,0 +1,27 @@
+{
+  "$id": "https://nod.invalid/schema/cosmos_reply.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The JSON object Cosmos is asked to return (used as its response_format schema).",
+  "properties": {
+    "answer": {
+      "enum": [
+        "yes",
+        "no",
+        "unsure"
+      ],
+      "title": "Answer",
+      "type": "string"
+    },
+    "reason": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "answer"
+  ],
+  "title": "CosmosReply",
+  "type": "object"
+}

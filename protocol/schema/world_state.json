@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "Eef": {
+      "description": "End-effector position and binarised gripper state.",
+      "properties": {
+        "gripper": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "title": "Gripper",
+          "type": "string"
+        },
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "gripper",
+        "quat"
+      ],
+      "title": "Eef",
+      "type": "object"
+    },
+    "ObjPose": {
+      "description": "Pose of one object in the sim world frame (metres). `quat` is optional.",
+      "properties": {
+        "pos": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos",
+          "type": "array"
+        },
+        "quat": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quat"
+        }
+      },
+      "required": [
+        "pos",
+        "quat"
+      ],
+      "title": "ObjPose",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/world_state.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Oracle world state.\n\n`atoms` maps ground atoms in registry form, e.g. \"on(akita_black_bowl_1,plate_1)\",\nto their truth value, as evaluated by LIBERO's `_eval_predicate`. The sim reports\nevery atom that appears (positive or negated) in any registry `pre` or `effects`.\nAn atom missing from `atoms` is UNKNOWN; see `nod_protocol.atoms.holds`.",
+  "properties": {
+    "atoms": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Atoms",
+      "type": "object"
+    },
+    "eef": {
+      "$ref": "#/$defs/Eef"
+    },
+    "objects": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ObjPose"
+      },
+      "title": "Objects",
+      "type": "object"
+    },
+    "scene_id": {
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "step": {
+      "title": "Step",
+      "type": "integer"
+    },
+    "t_sim": {
+      "title": "T Sim",
+      "type": "number"
+    }
+  },
+  "required": [
+    "scene_id",
+    "step",
+    "t_sim",
+    "atoms",
+    "objects",
+    "eef"
+  ],
+  "title": "WorldState",
+  "type": "object"
+}

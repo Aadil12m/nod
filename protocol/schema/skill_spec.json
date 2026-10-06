@@ -1,0 +1,380 @@
+{
+  "$defs": {
+    "CosmosQuestions": {
+      "additionalProperties": false,
+      "properties": {
+        "post": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Post"
+        },
+        "pre": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pre"
+        }
+      },
+      "title": "CosmosQuestions",
+      "type": "object"
+    },
+    "HomeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "lights_on",
+            "lights_off",
+            "call_caregiver"
+          ],
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "HomeSpec",
+      "type": "object"
+    },
+    "PolicySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": {
+          "title": "Checkpoint",
+          "type": "string"
+        },
+        "embodiment": {
+          "default": "LIBERO_PANDA",
+          "title": "Embodiment",
+          "type": "string"
+        },
+        "instruction": {
+          "title": "Instruction",
+          "type": "string"
+        },
+        "max_steps": {
+          "default": 400,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "n_action_steps": {
+          "default": 8,
+          "title": "N Action Steps",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "checkpoint",
+        "instruction"
+      ],
+      "title": "PolicySpec",
+      "type": "object"
+    },
+    "ScriptedSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "max_steps": {
+          "default": 160,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "script": {
+          "enum": [
+            "return_home",
+            "reset_scene",
+            "close_middle_drawer",
+            "handover_retreat"
+          ],
+          "title": "Script",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script"
+      ],
+      "title": "ScriptedSpec",
+      "type": "object"
+    },
+    "SkillStats": {
+      "additionalProperties": false,
+      "description": "Per-skill stats: alone (fresh table) and in_chain (after other skills, no reset).",
+      "properties": {
+        "alone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "in_chain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "placeholder": {
+          "default": false,
+          "title": "Placeholder",
+          "type": "boolean"
+        }
+      },
+      "title": "SkillStats",
+      "type": "object"
+    },
+    "StatBlock": {
+      "additionalProperties": false,
+      "description": "Measured success: k of n episodes, Wilson lower bound, median duration of successes.",
+      "properties": {
+        "k": {
+          "minimum": 0,
+          "title": "K",
+          "type": "integer"
+        },
+        "median_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median S"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "k",
+        "n",
+        "wilson_lo"
+      ],
+      "title": "StatBlock",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/skill_spec.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One registry entry (4.2.3). Fields marked \"addition\" are documented in docs/DEVIATIONS.md.",
+  "properties": {
+    "confirm": {
+      "default": "single",
+      "enum": [
+        "single",
+        "double"
+      ],
+      "title": "Confirm",
+      "type": "string"
+    },
+    "cosmos": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CosmosQuestions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "custom": {
+      "default": false,
+      "title": "Custom",
+      "type": "boolean"
+    },
+    "effects": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Effects",
+      "type": "array"
+    },
+    "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "est_s": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Est S"
+    },
+    "goal_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Goal Ref"
+    },
+    "home": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HomeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "kind": {
+      "enum": [
+        "policy",
+        "scripted",
+        "home"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "label": {
+      "title": "Label",
+      "type": "string"
+    },
+    "near_user": {
+      "default": false,
+      "title": "Near User",
+      "type": "boolean"
+    },
+    "objects": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Objects",
+      "type": "array"
+    },
+    "offer": {
+      "default": true,
+      "title": "Offer",
+      "type": "boolean"
+    },
+    "policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PolicySpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "pre": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Pre",
+      "type": "array"
+    },
+    "risk": {
+      "default": "low",
+      "enum": [
+        "none",
+        "low",
+        "high"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "scene_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scene Id"
+    },
+    "scripted": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScriptedSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "skill_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Skill Id",
+      "type": "string"
+    },
+    "stats": {
+      "$ref": "#/$defs/SkillStats"
+    },
+    "undo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Undo"
+    },
+    "ver": {
+      "default": 1,
+      "title": "Ver",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "skill_id",
+    "kind",
+    "label"
+  ],
+  "title": "SkillSpec",
+  "type": "object"
+}

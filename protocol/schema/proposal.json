@@ -1,0 +1,427 @@
+{
+  "$defs": {
+    "Check": {
+      "description": "One validator rule outcome (5.2), e.g. {\"rule\": \"R4_preconditions\", \"ok\": true}.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "ok",
+        "detail"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "FixedOption": {
+      "description": "Cards the UI always adds, e.g. {\"option_id\": \"none\", \"label\": \"None of these\"}.",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "label"
+      ],
+      "title": "FixedOption",
+      "type": "object"
+    },
+    "Option": {
+      "description": "One card. `label` always comes from the registry (R13); `why` is LLM text, <= 80 chars.",
+      "properties": {
+        "badges": {
+          "items": {
+            "enum": [
+              "less_reliable",
+              "needs_caregiver",
+              "unsure_from_camera",
+              "near_user",
+              "scripted",
+              "first_use"
+            ],
+            "type": "string"
+          },
+          "title": "Badges",
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "confirm": {
+          "enum": [
+            "single",
+            "double",
+            "per_step"
+          ],
+          "title": "Confirm",
+          "type": "string"
+        },
+        "est_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est S"
+        },
+        "home_action": {
+          "anyOf": [
+            {
+              "enum": [
+                "lights_on",
+                "lights_off",
+                "call_caregiver"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Home Action"
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "plan",
+            "home"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "locked": {
+          "default": false,
+          "title": "Locked",
+          "type": "boolean"
+        },
+        "option_id": {
+          "title": "Option Id",
+          "type": "string"
+        },
+        "precheck": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Precheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "risk": {
+          "enum": [
+            "none",
+            "low",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "skill_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skill Ids",
+          "type": "array"
+        },
+        "success": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Success"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "why": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "kind",
+        "skill_ids",
+        "home_action",
+        "label",
+        "why",
+        "success",
+        "est_s",
+        "risk",
+        "confirm",
+        "checks",
+        "precheck",
+        "badges",
+        "locked"
+      ],
+      "title": "Option",
+      "type": "object"
+    },
+    "Precheck": {
+      "description": "Cosmos pre-check status of one option (5.4).",
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "ok",
+            "unsure",
+            "block",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "Precheck",
+      "type": "object"
+    },
+    "Success": {
+      "description": "Success estimate shown on a card (\"19/20 in tests\").\n\nFor a plan, `p_est` is the product of in-chain rates (R10), and `n`, `k` and\n`wilson_lo` describe the weakest step. `k` is an addition to the design JSON.",
+      "properties": {
+        "basis": {
+          "enum": [
+            "alone",
+            "in_chain"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "k": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "K"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "p_est": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "P Est",
+          "type": "number"
+        },
+        "wilson_lo": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Wilson Lo",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p_est",
+        "basis",
+        "n",
+        "wilson_lo",
+        "k"
+      ],
+      "title": "Success",
+      "type": "object"
+    }
+  },
+  "$id": "https://nod.invalid/schema/proposal.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "arm_delay_ms": {
+      "default": 300,
+      "title": "Arm Delay Ms",
+      "type": "integer"
+    },
+    "expires_at": {
+      "title": "Expires At",
+      "type": "integer"
+    },
+    "fixed": {
+      "items": {
+        "$ref": "#/$defs/FixedOption"
+      },
+      "title": "Fixed",
+      "type": "array"
+    },
+    "focus": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Focus"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "nonce": {
+      "title": "Nonce",
+      "type": "string"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/Option"
+      },
+      "maxItems": 3,
+      "title": "Options",
+      "type": "array"
+    },
+    "proposal_id": {
+      "title": "Proposal Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "source": {
+      "enum": [
+        "nemotron",
+        "menu",
+        "fake"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "transcript": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transcript"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "proposal",
+      "default": "proposal",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "proposal_id",
+    "expires_at",
+    "arm_delay_ms",
+    "source",
+    "model",
+    "transcript",
+    "options",
+    "fixed",
+    "focus",
+    "nonce"
+  ],
+  "title": "Proposal",
+  "type": "object"
+}

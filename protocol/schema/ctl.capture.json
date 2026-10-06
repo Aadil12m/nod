@@ -1,0 +1,48 @@
+{
+  "$id": "https://nod.invalid/schema/ctl.capture.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cameras": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Cameras",
+      "type": "array"
+    },
+    "h": {
+      "default": 480,
+      "title": "H",
+      "type": "integer"
+    },
+    "req_id": {
+      "title": "Req Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "ctl.capture",
+      "default": "ctl.capture",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    },
+    "w": {
+      "default": 640,
+      "title": "W",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "req_id",
+    "cameras",
+    "w",
+    "h"
+  ],
+  "title": "Capture",
+  "type": "object"
+}

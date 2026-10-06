@@ -1,0 +1,63 @@
+{
+  "$id": "https://nod.invalid/schema/utter.text.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Typed text in place of speech (caregiver, or mock mode).",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "seq": {
+      "default": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "sess": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sess"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "type": {
+      "const": "utter.text",
+      "default": "utter.text",
+      "title": "Type",
+      "type": "string"
+    },
+    "utt_id": {
+      "title": "Utt Id",
+      "type": "integer"
+    },
+    "v": {
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "v",
+    "type",
+    "id",
+    "ts",
+    "sess",
+    "seq",
+    "utt_id",
+    "text"
+  ],
+  "title": "UtterText",
+  "type": "object"
+}

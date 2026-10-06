@@ -1,0 +1,22 @@
+{
+  "name": "nod-pwa",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Nod phone PWA and presenter page. Plain ES modules, no build step.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "test:face": "node tests/face_e2e.mjs",
+    "test:all": "node --test tests/*.test.mjs && node tests/e2e.mjs && node tests/face_e2e.mjs",
+    "stub": "node tests/stub_gateway.mjs --port 8000",
+    "vendor": "sh scripts/vendor.sh"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "playwright-core": "1.56.1",
+    "ws": "8.22.0"
+  }
+}

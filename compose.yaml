@@ -1,0 +1,251 @@
+# Nod services (design 4.5). Build context is the repo root for every image.
+#
+#   docker compose --profile mock up --build        # laptop, CPU only, no keys (http://localhost:8000)
+#   docker compose --profile live up -d --build     # the Nebius GPU VM (see docs/runbooks/demo-day.md)
+#   docker compose --profile mock --profile hass up # mock plus a local Home Assistant (set NOD_HOME=hass)
+#   docker compose --profile eval run --rm eval     # one nightly-style eval on the VM
+#
+# Secrets and per-deployment settings come from .env (copy .env.example). .env is optional, so
+# the mock profile runs without one. Nothing GPU-side publishes a port: only caddy (80, 443) is
+# reachable from outside in live mode, and the mock profile binds to 127.0.0.1 only.
+
+name: nod
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu, utility, compute, graphics]
+
+x-env-file: &env-file
+  env_file:
+    - path: .env
+      required: false
+
+x-gateway: &gateway
+  <<: *env-file
+  restart: unless-stopped
+  command: ["nod-gateway", "--host", "0.0.0.0", "--port", "8000"]
+  volumes:
+    - ./registry:/app/registry:ro          # stats/latest.json is refreshed by the nightly job
+    - ./recordings:/app/recordings:ro      # mock library (make fetch-mock); may be empty
+    - runs:/data/runs                      # run traces; read with: docker compose cp <svc>:/data/runs .
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+
+services:
+  # ---------------------------------------------------------------- live (GPU VM)
+  cosmos:
+    <<: *gpu
+    profiles: [live]
+    image: vllm/vllm-openai:v0.29.0
+    restart: unless-stopped
+    environment:
+      - HF_TOKEN
+    # Started before policy (vLLM reserves a fraction of total GPU memory at start-up). Stop it
+    # before fine-tuning. Co-hosting with GR00T on one 96 GB GPU is [unverified] (design 10.2).
+    command:
+      - nvidia/Cosmos-Reason2-8B
+      - --max-model-len=16384
+      - --gpu-memory-utilization=0.40
+      - --host=0.0.0.0
+      - --port=8001
+      - --reasoning-parser=qwen3
+    volumes:
+      - hf:/root/.cache/huggingface
+    ipc: host
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30m                    # first start downloads about 17 GB of weights
+
+  policy:
+    <<: *gpu
+    profiles: [live]
+    build:
+      context: .
+      dockerfile: docker/policy.Dockerfile
+    image: nod/policy:dev
+    restart: unless-stopped
+    environment:
+      - HF_TOKEN
+    # Port 5555 is NOT published: run_gr00t_server.py has no api_token option (design 3.3).
+    command:
+      - uv
+      - run
+      - --no-sync
+      - python
+      - gr00t/eval/run_gr00t_server.py
+      - --model-path=/ckpt/libero_goal
+      - --embodiment-tag=LIBERO_PANDA
+      - --use-sim-policy-wrapper
+      - --host=0.0.0.0
+      - --port=5555
+    volumes:
+      - ckpt:/ckpt
+      - hf:/root/.cache/huggingface
+    ipc: host
+    depends_on:
+      cosmos:
+        condition: service_healthy
+        required: false
+
+  sim:
+    <<: *gpu
+    profiles: [live]
+    build:
+      context: .
+      dockerfile: docker/sim.Dockerfile
+    image: nod/sim:dev
+    restart: unless-stopped
+    environment:
+      - MUJOCO_GL=egl
+      - PYOPENGL_PLATFORM=egl
+      - MUJOCO_EGL_DEVICE_ID=0
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    command: ["python", "-m", "nod_sim.runner", "--policy", "tcp://policy:5555"]
+    volumes:
+      - runs:/data/runs                    # per-run recordings (poses.npz, manifest.json, ...)
+    depends_on:
+      - policy
+
+  viewer:
+    profiles: [live]
+    build:
+      context: .
+      dockerfile: docker/viewer.Dockerfile
+    image: nod/viewer:dev
+    restart: unless-stopped
+    command: ["python", "-m", "nod_viewer.main", "--mjb", "/recordings/scene_libero_goal_v1.mjb",
+              "--sub", "tcp://sim:5563", "--port", "8080"]
+    volumes:
+      - ./recordings:/recordings:ro
+    depends_on:
+      - sim
+
+  gateway:
+    <<: *gateway
+    profiles: [live]
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+      args:
+        GATEWAY_EXTRAS: asr                # Parakeet via onnx-asr, CPU
+    image: nod/gateway:live
+    environment:
+      - NOD_MODE=live
+      - NOD_SIM_CTL=tcp://sim:5560
+      - NOD_SIM_ESTOP=tcp://sim:5561
+      - NOD_SIM_PUB=tcp://sim:5562
+      - NOD_SIM_POSE_PUB=tcp://sim:5563
+      - NOD_COSMOS_URL=${NOD_COSMOS_URL:-http://cosmos:8001/v1}
+      - NOD_RUNS_DIR=/data/runs
+    volumes:
+      - ./registry:/app/registry:ro
+      - ./recordings:/app/recordings:ro
+      - runs:/data/runs
+      - asr:/home/nod/.cache/huggingface    # Parakeet model cache
+    depends_on:
+      sim:
+        condition: service_started
+        required: false
+
+  caddy:
+    <<: *env-file
+    profiles: [live]
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"                            # ACME HTTP-01 challenge and redirect to HTTPS
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data                   # keep certificates across restarts (Let's Encrypt rate limits)
+      - caddy_config:/config
+    depends_on:
+      - gateway
+
+  # ---------------------------------------------------------------- mock (any laptop, CPU)
+  gateway-mock:
+    <<: *gateway
+    profiles: [mock]
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+      args:
+        GATEWAY_EXTRAS: ""
+    image: nod/gateway:mock
+    environment:
+      - NOD_MODE=mock
+      # The in-process MockRunner binds the pose socket on all interfaces so viewer-mock can
+      # subscribe; the other mock sockets stay on 127.0.0.1 inside the container.
+      - NOD_SIM_POSE_PUB=tcp://0.0.0.0:5563
+      - NOD_RUNS_DIR=/data/runs
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  viewer-mock:
+    profiles: [mock]
+    build:
+      context: .
+      dockerfile: docker/viewer.Dockerfile
+    image: nod/viewer:dev
+    # Needs recordings/scene_libero_goal_v1.mjb (make fetch-mock). Without it this container exits
+    # and the presenter page shows no 3D view; the gateway and phone UI still work.
+    restart: "no"
+    command: ["python", "-m", "nod_viewer.main", "--mjb", "/recordings/scene_libero_goal_v1.mjb",
+              "--sub", "tcp://gateway-mock:5563", "--port", "8080"]
+    volumes:
+      - ./recordings:/recordings:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - gateway-mock
+
+  # ---------------------------------------------------------------- optional
+  homeassistant:
+    profiles: [live, hass]
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Etc/UTC}
+    volumes:
+      - ./infra/hass:/config
+    # Reachable from the gateway as http://homeassistant:8123. Published on loopback only, for
+    # onboarding through an SSH tunnel (ssh -L 8123:127.0.0.1:8123 nod@$VM_IP).
+    ports:
+      - "127.0.0.1:8123:8123"
+
+  eval:
+    <<: [*gpu, *env-file]
+    profiles: [eval]
+    build:
+      context: .
+      dockerfile: docker/eval.Dockerfile
+    image: nod/eval:dev
+    environment:
+      - HF_TOKEN
+      - NOD_EVAL_EPISODES=${NOD_EVAL_EPISODES:-20}
+      - NOD_EVAL_CHAINS=${NOD_EVAL_CHAINS:-A,B}
+    volumes:
+      - ckpt:/ckpt
+      - hf:/root/.cache/huggingface
+      - ./results:/mnt/results
+    ipc: host
+
+volumes:
+  runs: {}
+  ckpt: {}
+  hf: {}
+  asr: {}
+  caddy_data: {}
+  caddy_config: {}
