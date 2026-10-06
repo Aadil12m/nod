@@ -108,6 +108,7 @@ class Rig:
         self.hb_on = True
         self.face = True
         self.latched = False
+        self.token: str | None = None  # resume_token of the user-lease phone (from its welcome)
 
     @property
     def mock(self):
@@ -150,7 +151,10 @@ class Rig:
             resume_token=None,
             calib={"profile_id": "cal_1", "long_blink_ms": 700, "fps": 24},
         )
-        await c.wait_type("welcome")
+        w = await c.wait_type("welcome")
+        c.token = w["resume_token"]
+        if role == "user":
+            self.token = w["resume_token"]  # the user's safety socket sends it in hb and estop.reset
         return c
 
     async def safety(self, heartbeat: bool = True) -> WsClient:
@@ -164,7 +168,14 @@ class Rig:
         with contextlib.suppress(Exception):
             while True:
                 if self.hb_on:
-                    await c.send("hb", face_present=self.face, track_conf=0.95, fps=24, latched=self.latched)
+                    await c.send(
+                        "hb",
+                        face_present=self.face,
+                        track_conf=0.95,
+                        fps=24,
+                        latched=self.latched,
+                        resume_token=self.token,
+                    )
                 await asyncio.sleep(0.1)
 
     async def inject(self, kind: str, **body: Any) -> dict:

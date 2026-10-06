@@ -86,8 +86,9 @@ test('closures shorter than the threshold cancel the ring instead of confirming'
 });
 
 test('open gaps under 80 ms inside a closure are ignored; longer gaps split it', () => {
-  // 400 + 50 ms flicker + 400 = one closure of about 850 ms
-  const a = new Scene(4000, { seed: 7, noise: 0 }).blink(1000, 400).blink(1450, 400);
+  // 400 + 30 ms flicker + 400 = one closure of about 830 ms. (The gap is measured where the score
+  // crosses the thresholds: with the eyelid ramps this flicker is open for about 55 ms.)
+  const a = new Scene(4000, { seed: 7, noise: 0 }).blink(1000, 400).blink(1430, 400);
   const evA = run(new GestureMachine(), a, 60, { jitter: 0 });
   assert.equal(fired(evA, 'long_blink').length, 1);
   // 400 + 150 ms open + 400 = two short blinks
@@ -274,4 +275,38 @@ test('non-monotonic timestamps are dropped and DEFAULTS are frozen', () => {
   gm.update({ t_ms: 100, face_present: true, blendshapes: {} });
   assert.deepEqual(gm.update({ t_ms: 50, face_present: true, blendshapes: {} }), []);
   assert.ok(Object.isFrozen(DEFAULTS));
+});
+
+// Two natural blinks in a row, as a step signal (eyes fully closed / fully open), sampled at a
+// given frame rate and phase. Review finding: these used to merge into one long blink when the
+// open gap was up to gap_ms plus two frames (132 ms at 30 fps, 198 ms at 15 fps).
+function twoBlinks(cfg, fps, phase, closeMs, gapMs) {
+  const score = (t) => ((t >= 0 && t < closeMs) || (t >= closeMs + gapMs && t < 2 * closeMs + gapMs) ? 0.9 : 0.05);
+  const gm = new GestureMachine(cfg);
+  const evs = [];
+  for (let t = -2000 + phase; t < 2500; t += 1000 / fps) {
+    evs.push(...gm.update({ t_ms: t + 10000, face_present: true, yaw_deg: 0, pitch_deg: 0,
+      blendshapes: { eyeBlinkLeft: score(t), eyeBlinkRight: score(t) } }));
+  }
+  return evs.filter((e) => e.name === 'long_blink' && e.phase === 'fired');
+}
+
+test('two natural blinks with an open gap of gap_ms or more never merge into a long blink, at any fps or phase', () => {
+  for (const fps of [15, 24, 30, 60]) {
+    for (let phase = 0; phase < 1000 / fps; phase += 5) {
+      for (const [closeMs, gapMs] of [[300, 100], [350, 80], [350, 120], [350, 198], [400, 90]]) {
+        assert.equal(twoBlinks({}, fps, phase, closeMs, gapMs).length, 0, `${fps} fps, phase ${phase}, ${closeMs}+${gapMs}+${closeMs}`);
+      }
+      // calibrated 600 ms profile, two 250 ms blinks 100 ms apart
+      assert.equal(twoBlinks({ long_blink_ms: 600 }, fps, phase, 250, 100).length, 0, `${fps} fps, 600 ms profile`);
+    }
+  }
+});
+
+test('one continuous long blink still fires at every fps and phase', () => {
+  for (const fps of [15, 24, 30, 60]) {
+    for (let phase = 0; phase < 1000 / fps; phase += 5) {
+      assert.equal(twoBlinks({}, fps, phase, 850, 5000).length, 1, `${fps} fps, phase ${phase}`);
+    }
+  }
 });

@@ -396,6 +396,13 @@ class MockRunner:
 
     def _handle_estop(self, msg: CtlEStop, t_rx: int) -> None:
         stopped_at = None
+        if msg.estop_seq in self.estops and self.run is None:
+            # A repeat (the gateway resends until acked) with nothing running: ack again, no
+            # second epoch bump. While a run is in flight a repeated seq stops it (nod_sim.runner).
+            self._send_pub(
+                SimEStopAck(estop_seq=msg.estop_seq, epoch=self.epoch, stopped_at_step=None, t_rx=t_rx, t_halt=now_ms())
+            )
+            return
         if self.run is not None:
             # Controlled stop (Category 1 analogue): 4 zero-motion steps holding the gripper, then halt.
             stopped_at = self.run.step
@@ -445,11 +452,14 @@ class MockRunner:
                 self._ack(ident, msg.req_id, False, f"unknown scene {msg.scene_id}")
                 return
             self.epoch = max(self.epoch, msg.epoch)
+            self.estops.clear()  # a (re)connecting gateway starts its e-stop counter again
             self.run = None
             self.atoms = {a: False for a in self.atom_names}
             self.eef, self.gripper = list(HOME_EEF), "open"
             self._world_dirty = True
             self._ack(ident, msg.req_id, True)
+            # An idle status carries the epoch, so a restarted gateway can adopt it (as nod_sim.runner).
+            self._send_pub(SimStatus(run_id=None, epoch=self.epoch, phase="idle", step=self.sim_step))
             self._publish_header()
         elif isinstance(msg, (RunSkill, RunScripted)):
             self._start_run(ident, msg)

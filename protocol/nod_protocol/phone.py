@@ -110,13 +110,20 @@ class Ping(Envelope):
 
 
 class Heartbeat(Envelope):
-    """Sent every 100 ms on /ws/safety."""
+    """Sent every 100 ms on /ws/safety.
+
+    `resume_token` is the token from this phone's `welcome` on /ws/phone. It binds the
+    heartbeat to the phone session: only the heartbeat of the phone holding the `user` lease
+    feeds the watchdogs and the R9 face check (a `latched` heartbeat from any device still
+    counts as a stop). None until the phone has been welcomed.
+    """
 
     type: Literal["hb"] = "hb"
     face_present: bool
     track_conf: float
     fps: float
     latched: bool
+    resume_token: str | None = None
 
 
 class EStop(Envelope):
@@ -130,7 +137,12 @@ class EStop(Envelope):
 
 
 class EStopReset(Envelope):
+    """Clears the latched stop `estop_seq` (the latest one the phone knows of). Accepted only
+    from the phone holding the `user` lease (long blink of at least the minimum hold, or a
+    caregiver touch on that phone) or a `caregiver` phone, identified by `resume_token`."""
+
     type: Literal["estop.reset"] = "estop.reset"
     estop_seq: int
     gesture: str  # "long_blink" or "touch" (caregiver)
     held_ms: int | None = None
+    resume_token: str | None = None

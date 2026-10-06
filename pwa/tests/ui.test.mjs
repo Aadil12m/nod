@@ -149,26 +149,86 @@ test('"None of these" cancels; a locked option never confirms', () => {
   assert.equal(r.ui.screen(), 'idle');
 });
 
-test('confirm "double" needs a second long blink', () => {
+test('confirm "double": every long blink goes to the gateway; its "second" (new nonce) re-arms the card', () => {
   const r = rig();
   propose(r, { options: [{ ...OPTS[1], confirm: 'double', badges: ['less_reliable'] }] });
   r.adv(1500);
   blink(r, 800);
-  assert.equal(r.of('phone', 'ui.confirm').length, 0);
+  assert.equal(r.of('phone', 'ui.confirm').length, 1, 'the first blink is sent, not staged on the phone');
+  assert.equal(r.of('phone', 'ui.confirm')[0].nonce, 'n_5c1e');
+  // The gateway answers with the same card and a fresh nonce (validate_confirm "second").
+  r.adv(100);
+  r.ui.onServer({ type: 'proposal', proposal_id: 'p_01J9', expires_at: r.clock.t + 30_000, arm_delay_ms: 300, source: 'nemotron',
+    options: [{ ...OPTS[1], confirm: 'double', badges: ['less_reliable'] }], fixed: [{ option_id: 'none', label: 'None of these' }],
+    focus: 'o2', nonce: 'n_second' });
+  r.ui.onServer({ type: 'notice', level: 'info', text: 'Blink once more to confirm', speak: true });
+  assert.equal(r.ui.screen(), 'choose');
   assert.equal(r.ui.view().double, true);
-  r.adv(1200);
-  blink(r, 800);
+  assert.match(r.ui.hint, /once more/);
+  blink(r, 800); // too soon: the arm delay and dwell restarted with the new nonce
   assert.equal(r.of('phone', 'ui.confirm').length, 1);
+  r.adv(1200);
+  blink(r, 800); // started after the re-armed card's arm delay
+  const c = r.of('phone', 'ui.confirm');
+  assert.equal(c.length, 2, 'two long blinks in total, not four');
+  assert.equal(c[1].nonce, 'n_second');
 });
 
-test('second blink of a double confirm expires after 8 s', () => {
+test('a proposal update with the same id and nonce keeps the focus, timers and ring', () => {
   const r = rig();
-  propose(r, { options: [{ ...OPTS[1], confirm: 'double' }], expires_at: r.clock.t + 60_000 });
+  propose(r);
+  r.adv(500);
+  g(r, 'turn_right'); // o1 -> o2
+  assert.deepEqual(r.of('phone', 'ui.focus').map((m) => m.option_id), ['o2']);
+  r.adv(200);
+  const before = { ...r.ui.proposal };
+  // pre-check results arrive in place (gateway resends the proposal; focus still says o1)
+  r.ui.onServer({ type: 'proposal', proposal_id: 'p_01J9', expires_at: r.clock.t + 30_000, arm_delay_ms: 300, source: 'nemotron',
+    options: OPTS.map((o) => ({ ...o, precheck: { status: 'ok' } })), fixed: [{ option_id: 'none', label: 'None of these' }],
+    focus: 'o1', nonce: 'n_5c1e' });
+  const p = r.ui.proposal;
+  assert.equal(p.items[p.focusIdx].option_id, 'o2');
+  assert.equal(p.shownAt, before.shownAt);
+  assert.equal(p.focusedAt, before.focusedAt);
+  assert.equal(p.items[1].precheck.status, 'ok');
   r.adv(1500);
   blink(r, 800);
-  r.adv(9000);
+  assert.equal(r.of('phone', 'ui.confirm')[0].option_id, 'o2', 'the confirm is for the option the user chose');
+});
+
+test('STOP latches when /ws/phone is down or a confirm has not been answered (never a silent cancel)', () => {
+  const r = rig();
+  propose(r, { options: [OPTS[1]], focus: 'o2' });
+  r.adv(1500);
+  blink(r, 800); // ui.confirm leaves on /ws/phone
+  r.ui.connected = { phone: false, safety: true }; // ... and /ws/phone drops; COUNTDOWN never arrives
+  r.adv(3100); // CONFIRM_WAIT_MS passes: "Try again"
+  assert.equal(r.ui.stop('jaw_hold', { held_ms: 320 }), 'estop');
+  assert.ok(r.estop.latched);
+  assert.equal(r.of('safety', 'estop').length, 1);
+
+  const r2 = rig();
+  propose(r2, { options: [OPTS[1]], focus: 'o2' });
+  r2.adv(1500);
+  blink(r2, 800);
+  r2.adv(3100); // still connected, but nothing heard since the confirm
+  assert.equal(r2.ui.stop('voice_stop'), 'estop');
+
+  const r3 = rig();
+  r3.ui.onServer({ type: 'state', mode: 'IDLE', estop_seq: 0 });
+  r3.ui.connected = { phone: false, safety: true };
+  assert.equal(r3.ui.stop('button'), 'estop', 'without /ws/phone the phone cannot know nothing moves');
+});
+
+test('STOP after the confirm was answered (rejected) is a cancel again', () => {
+  const r = rig();
+  propose(r, { options: [OPTS[1]], focus: 'o2' });
+  r.adv(1500);
   blink(r, 800);
-  assert.equal(r.of('phone', 'ui.confirm').length, 0, 'the second blink restarted the double confirm');
+  r.ui.onServer({ type: 'notice', level: 'warn', text: 'Try again', speak: false });
+  r.adv(3100);
+  assert.equal(r.ui.stop('jaw_hold'), 'cancel');
+  assert.ok(!r.estop.latched);
 });
 
 test('no answer to a confirm within 3 s: "Try again"', () => {

@@ -44,6 +44,8 @@ class FakeSession:
         self.mode = "EXECUTING"
         self.epochs: list[int] = []
         self.pauses: list[str] = []
+        self.client_estop_seq = 0
+        self.refused: list[str] = []
 
     def latch_estop(self, reason: str) -> None:
         self.log.append(("session.latch", reason))
@@ -61,6 +63,10 @@ class FakeSession:
 
     def on_estop_seq(self, seq: int) -> None:
         self.log.append(("session.seq", seq))
+        self.client_estop_seq = max(self.client_estop_seq, seq)
+
+    def refuse_reset(self, why: str) -> None:
+        self.refused.append(why)
 
     def on_sim_epoch(self, epoch: int) -> None:
         self.epochs.append(epoch)
@@ -74,6 +80,7 @@ def rig():
     metrics = MetricsHub()
     ch = SafetyChannel(Config(mode="mock"), sim, sess, hb, metrics=metrics, clock=clock)
     peer = Peer(None, "safety", "s_1")
+    peer.lease = "user"  # without a lease resolver the channel uses the peer's own lease
     return ch, sim, sess, hb, clock, peer, log, metrics
 
 
@@ -133,7 +140,7 @@ def test_same_seq_after_reset_is_processed(rig):
     ch, sim, sess, hb, clock, peer, log, _ = rig
     ch.on_estop(estop(seq=3), peer)
     ch.on_sim_estop_ack(SimEStopAck(estop_seq=1, epoch=1, t_rx=clock.t, t_halt=clock.t))
-    assert ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink"), peer)
+    assert ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink", held_ms=820), peer)
     sess.mode = "EXECUTING"
     ch.on_estop(estop(seq=3), peer)
     assert [e for e in log if e[0] == "sim.estop"] == [("sim.estop", 1), ("sim.estop", 2)]
@@ -255,7 +262,7 @@ def test_latched_heartbeat_ignored_just_after_reset(rig):
     ch, sim, sess, hb, clock, peer, log, _ = rig
     ch.on_estop(estop(), peer)
     ch.on_sim_estop_ack(SimEStopAck(estop_seq=1, epoch=1, t_rx=clock.t, t_halt=clock.t))
-    assert ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink"), peer)
+    assert ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink", held_ms=820), peer)
     clock.t += 100
     ch.on_hb(Heartbeat(face_present=True, track_conf=0.9, fps=24, latched=True), peer)  # in flight
     assert sess.mode == "IDLE"
@@ -283,3 +290,37 @@ def test_phone_gw_latency_with_skewed_clock(rig):
     ch2.on_estop(estop(seq=1, ts=clock.t - 50_000), p2)
     ch2.on_sim_estop_ack(SimEStopAck(estop_seq=1, epoch=1, t_rx=clock.t, t_halt=clock.t))
     assert p2.sent[0].lat_ms.phone_gw is None
+
+
+def test_unacked_ctl_estop_is_resent_until_the_sim_acks(rig):
+    ch, sim, sess, hb, clock, peer, log, _ = rig
+    ch.on_estop(estop(seq=3), peer)
+    for _ in range(4):
+        clock.t += 300
+        ch.watchdog_tick()
+    sends = [e for e in log if e[0] == "sim.estop"]
+    assert len(sends) == 5 and {s for _, s in sends} == {1}  # same gw seq every time
+    ch.on_sim_estop_ack(SimEStopAck(estop_seq=1, epoch=1, t_rx=clock.t, t_halt=clock.t))
+    clock.t += 1000
+    ch.watchdog_tick()
+    assert len([e for e in log if e[0] == "sim.estop"]) == 5
+
+
+def test_reset_refused_until_the_sim_confirms_the_stop(rig):
+    ch, sim, sess, hb, clock, peer, log, _ = rig
+    ch.on_estop(estop(seq=3), peer)
+    clock.t += 2000
+    ch.watchdog_tick()  # phone acked without sim fields; the sim has not confirmed
+    assert not ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink", held_ms=820), peer)
+    assert sess.mode == "ESTOPPED" and "not confirmed" in sess.refused[-1]
+    ch.on_sim_estop_ack(SimEStopAck(estop_seq=1, epoch=1, t_rx=clock.t, t_halt=clock.t))
+    assert ch.on_estop_reset(EStopReset(estop_seq=3, gesture="long_blink", held_ms=820), peer)
+
+
+def test_heartbeat_from_a_device_without_the_user_lease_is_ignored(rig):
+    ch, sim, sess, hb, clock, peer, log, _ = rig
+    other = Peer(None, "safety", "s_1")  # lease "none"
+    ch.on_hb(Heartbeat(face_present=True, track_conf=0.9, fps=24, latched=False), other)
+    assert hb.last_hb_ms is None and not hb.face_present
+    ch.on_hb(Heartbeat(face_present=True, track_conf=0.9, fps=24, latched=False), peer)
+    assert hb.last_hb_ms == clock.t and hb.face_present

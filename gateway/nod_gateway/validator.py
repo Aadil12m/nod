@@ -86,6 +86,12 @@ class SafetyPolicy:
     focus_dwell_ms: int = 300
     proposal_ttl_ms: int = 30_000
     min_confirm_hold_ms: int = 600
+    # Gestures that may confirm motion: the long blink (6.1; the PWA also sends it for the
+    # keyboard's held Enter) and the calibrated alternative for users who cannot long-blink,
+    # a held head turn (6.3 step 5), which must be held `head_hold_min_ms`. Anything else,
+    # including "double_blink" (never starts motion), is rejected.
+    confirm_gestures: frozenset[str] = frozenset({"long_blink", "head_hold"})
+    head_hold_min_ms: int = 1500
     spacing_ms: int = 2000
     near_user_scale: float = 0.6
     why_max: int = 80
@@ -417,6 +423,14 @@ def _session_rules(
     return confirm, locked
 
 
+def step_needs_double(spec: SkillSpec, rules_confirm: str, sess: SessionView) -> bool:
+    """Would this motion, offered on its own card, need a double confirm? `rules_confirm` is
+    the R2-R6 result (`Feasibility.confirm`: the registry policy, or R6 "less reliable")."""
+    if rules_confirm == "double" or spec.risk == "high":  # R6 / registry, R7
+        return True
+    return bool(spec.near_user and spec.skill_id not in sess.near_user_used)  # R14 first use
+
+
 def _dedupe(badges: list[str]) -> list[str]:
     return list(dict.fromkeys(badges))
 
@@ -440,11 +454,14 @@ def _plan_option(
     badges: list[str] = []
     steps: list[Success] = []
     est = 0.0
-    for sid in ids:
+    first_confirm = "single"
+    for i, sid in enumerate(ids):
         spec = reg[sid]
         f = skill_rules(spec, world, pol, atoms, in_chain=True, check_pre=False)
         if not f.ok:
             return Dropped(-1, f.rule or R10, f"step {sid}: {f.reason}", tuple(ids))
+        if i == 0:
+            first_confirm = f.confirm
         badges.extend(b for b in f.badges if b in ("less_reliable", "near_user"))
         if f.success is not None:
             steps.append(f.success)
@@ -472,6 +489,12 @@ def _plan_option(
         badges.append("less_reliable")
     checks = [Check(rule=R2, ok=True), Check(rule=R4, ok=True), Check(rule=R10, ok=True)]
     confirm, locked = _session_rules(specs, sess, badges, checks, "per_step")
+    # Confirming the plan card starts step 0 at once, so the card carries step 0's own
+    # confirm policy: a high-risk step (R7), a near-user step on first use (R14) or a
+    # less reliable step (R6) needs a double confirm. Later steps get their own card
+    # (`plan_next`), also in "whole plan" mode when they need a double confirm.
+    if step_needs_double(specs[0], first_confirm, sess):
+        confirm = "double"
     return Option(
         option_id="",
         kind="plan",
@@ -660,11 +683,13 @@ def validate_confirm(
     if c.focused_at < c.shown_at or c.ts - c.focused_at < pol.focus_dwell_ms:
         return reject(R9, "focus dwell too short (phone clock)", option)
 
-    # Gesture: a double blink never starts motion (6.1); a long blink must be long.
-    if c.gesture == "double_blink":
-        return reject(R9, "double blink never starts motion", option)
-    if c.gesture == "long_blink" and c.held_ms < pol.min_confirm_hold_ms:
-        return reject(R9, f"long blink held {c.held_ms} ms < {pol.min_confirm_hold_ms} ms", option)
+    # Gesture: only allow-listed confirm gestures (a double blink never starts motion, 6.1),
+    # and every one of them must be held for the minimum time.
+    if c.gesture not in pol.confirm_gestures:
+        return reject(R9, f"gesture {c.gesture!r} cannot confirm motion", option)
+    min_hold = pol.head_hold_min_ms if c.gesture == "head_hold" else pol.min_confirm_hold_ms
+    if c.held_ms < min_hold:
+        return reject(R9, f"{c.gesture} held {c.held_ms} ms < {min_hold} ms", option)
 
     # R7: locked cards ("Needs caregiver") cannot be confirmed.
     if option.locked:

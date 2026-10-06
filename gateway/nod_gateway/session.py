@@ -79,6 +79,7 @@ from .validator import (
     pre_decision,
     skill_rules,
     spacing_wait_ms,
+    step_needs_double,
     validate_confirm,
     validate_proposal,
 )
@@ -130,6 +131,7 @@ class RunCtx:
     fault: str | None = None
     last_forward_ms: int = 0
     precheck: CosmosResult | None = None
+    motion_live: bool = False  # a sim motion was sent and its terminal status not yet consumed
 
 
 class Session:
@@ -187,6 +189,9 @@ class Session:
         self.audio: dict[int, bytearray] = {}
         self.audio_sr: dict[int, int] = {}
         self.client_estop_seq = 0
+        self._unpaused = asyncio.Event()  # set when a PAUSED session resumes or is cancelled
+        self._pause_cancelled = False  # "Cancel" chosen on the "Resume?" card
+        self._stray_aborts: dict[str, int] = {}  # run_id -> gateway ms of the last ctl.abort sent
 
     # ================================================================ views and output
 
@@ -373,7 +378,14 @@ class Session:
         elif mode in ("PAUSED", "EXECUTING"):
             self._drop_proposal()
             self._spawn(self._abort_sim(), "abort")
-        # IDLE, POSTCHECK, ESTOPPED: nothing to cancel (STOP when idle means back on the phone).
+            if mode == "PAUSED":
+                self._pause_cancelled = True
+                self._unpaused.set()  # a run task held between motions ends the run
+        elif mode == "IDLE":
+            # STOP when idle means back on the phone. Nothing should be moving; if the sim
+            # still runs something the gateway lost track of, this ends it (cheap when idle).
+            self._spawn(self._abort_quiet(), "abort-idle")
+        # POSTCHECK, ESTOPPED: nothing to cancel.
 
     # ================================================================ planning
 
@@ -861,11 +873,7 @@ class Session:
         if spec.near_user:
             self.near_user_used.add(spec.skill_id)
         cmd = self._command(spec, run_id)
-        try:
-            await self.sim.run(cmd)
-            self.health.ok("sim")
-        except SimError as exc:
-            self.health.error("sim", str(exc))
+        if not await self._start_motion(rc, cmd):
             await self._fail_start(rc, "The robot did not start")
             return
         self._send_run(rc, "executing")
@@ -881,24 +889,27 @@ class Session:
             script = "handover_retreat" if spec.near_user else "return_home"
             home_spec = self.reg.get(script)
             if home_spec is not None and home_spec.scripted is not None:
+                # A protective pause that landed as the skill ended holds the next motion until
+                # the user resumes (5.6): no motion starts while PAUSED.
+                if not await self._hold_while_paused(rc):
+                    return
                 self._send_run(rc, "returning_home")
-                rc.sim_run_id = new_id("r")
-                try:
-                    await self.sim.run(
-                        RunScripted(
-                            req_id=new_id("q"),
-                            run_id=rc.sim_run_id,
-                            epoch=self.epoch,
-                            script=home_spec.scripted.script,
-                            max_steps=home_spec.scripted.max_steps,
-                        )
-                    )
+                home_cmd = RunScripted(
+                    req_id=new_id("q"),
+                    run_id=new_id("r"),
+                    epoch=self.epoch,
+                    script=home_spec.scripted.script,
+                    max_steps=home_spec.scripted.max_steps,
+                )
+                if await self._start_motion(rc, home_cmd):
                     hterm = await self._wait_terminal(rc, forward=False)
                     if hterm is None or hterm.phase == "aborted":
                         self._end_aborted(rc, "Stopped")
                         return
-                except SimError as exc:
-                    self.presenter.trace("run", run_id, {"return_home_error": str(exc)})
+                else:
+                    self.presenter.trace("run", run_id, {"return_home_error": "the robot did not start"})
+        if not await self._hold_while_paused(rc):
+            return
         self.last_motion_end_ms = self.clock()
         self.in_chain = spec.skill_id != "reset_scene"
 
@@ -974,6 +985,36 @@ class Session:
             )
         raise ValueError(f"{spec.skill_id} is not a motion")
 
+    async def _start_motion(self, rc: RunCtx, cmd: RunSkill | RunScripted) -> bool:
+        """Send one motion command. On a refusal, ack timeout or lost reply, send ctl.abort
+        (the sim may have accepted it late or its ack may have been lost) and return False."""
+        rc.sim_run_id = cmd.run_id
+        rc.motion_live = True
+        try:
+            await self.sim.run(cmd)
+            self.health.ok("sim")
+            return True
+        except SimError as exc:
+            self.health.error("sim", str(exc))
+            rc.motion_live = False
+            self.presenter.trace("run", rc.run_id, {"start_error": str(exc), "sim_run_id": cmd.run_id})
+            with contextlib.suppress(SimError):
+                await self.sim.abort(self.epoch)
+            return False
+
+    async def _hold_while_paused(self, rc: RunCtx) -> bool:
+        """Between motions: wait while PAUSED. True when resumed; False if the run ended
+        (cancelled while paused: the run is reported aborted here)."""
+        while self.mode == "PAUSED" and not self._pause_cancelled:
+            self._unpaused.clear()
+            await self._unpaused.wait()
+        if self.run is not rc:
+            return False
+        if self.mode == "EXECUTING":
+            return True
+        self._end_aborted(rc, "Cancelled" if self.mode == "PAUSED" else "Stopped")
+        return False
+
     async def _fail_start(self, rc: RunCtx, text: str) -> None:
         self._send_run(rc, "failed")
         self._finish_run(rc, "failed")
@@ -983,6 +1024,8 @@ class Session:
         self._after_idle()
 
     def _end_aborted(self, rc: RunCtx, text: str) -> None:
+        if self.live is not None and self.live.purpose == "resume":
+            self._drop_proposal()
         self._send_run(rc, "aborted")
         self._finish_run(rc, "aborted")
         self.last_motion_end_ms = self.clock()
@@ -1002,6 +1045,7 @@ class Session:
                 s = await asyncio.wait_for(rc.queue.get(), self.cfg.sim_status_timeout_s)
             except TimeoutError:
                 self.health.error("sim", "no status for the run in flight")
+                rc.motion_live = False
                 with contextlib.suppress(SimError):
                     await self.sim.abort(self.epoch)
                 return None
@@ -1014,8 +1058,11 @@ class Session:
             if s.fault == "policy_timeout":
                 self.health.error("policy", "policy_timeout")
             if s.phase in ("done", "failed", "aborted"):
-                if self.live is not None and self.live.purpose == "resume":
-                    self._drop_proposal()  # the motion ended while paused (e.g. a pause raced the finish)
+                rc.motion_live = False
+                # A motion that ended while paused (a pause raced the finish) keeps the "Resume?"
+                # card: the next motion waits for it (_hold_while_paused). An aborted one ends here.
+                if s.phase == "aborted" and self.live is not None and self.live.purpose == "resume":
+                    self._drop_proposal()
                 return s
             if s.phase == "paused":
                 if self.mode != "PAUSED":
@@ -1033,9 +1080,11 @@ class Session:
         if decision == "done" and plan.step + 1 < len(plan.skill_ids):
             plan.step += 1
             self._set_mode("IDLE")
-            if self.cfg.plan_mode == "whole":
+            if self.cfg.plan_mode == "whole" and not self._step_needs_card(self.reg[plan.skill_ids[plan.step]]):
                 self.run_task = self._spawn(self._whole_plan_next(plan), "run")
             else:
+                # Per-step mode, or a step that needs its own double confirm (R6, R7, R14) even
+                # in "whole plan" mode: it never starts on a countdown alone.
                 self._offer_plan_next(plan)
             return
         self.plan = None
@@ -1053,6 +1102,14 @@ class Session:
             oracle=None if decision == "uncertain" else False,
         )
         self._spawn(self._recovery(failure), "plan-recovery")
+
+    def _step_needs_card(self, spec: SkillSpec) -> bool:
+        """A plan step that must be confirmed on its own card (double confirm) in whole mode."""
+        world = self.world
+        if world is None:
+            return True
+        f = skill_rules(spec, world, self.pol, world.atoms, self.in_chain, offer_required=False)
+        return step_needs_double(spec, f.confirm, self.snapshot())
 
     def _offer_plan_next(self, plan: PlanCtx) -> None:
         sid = plan.skill_ids[plan.step]
@@ -1174,6 +1231,7 @@ class Session:
 
     def _enter_paused(self, reason: str, send_pause: bool) -> None:
         self.pause_reason = reason
+        self._pause_cancelled = False
         self._set_mode("PAUSED")
         if self.run is not None:
             self._send_run(self.run, "paused")
@@ -1183,9 +1241,24 @@ class Session:
         self._offer_resume(reason)
 
     async def _pause_sim(self) -> None:
+        """Send ctl.pause. If the sim refuses it or does not answer while a motion of ours may be
+        in flight, escalate to ctl.abort: a protective pause must never be lost while the
+        phone says PAUSED. (Between motions the sim has nothing to pause; the run task holds
+        the next motion in `_hold_while_paused`.)"""
+        rc = self.run
         try:
             await self.sim.pause(self.epoch)
-        except SimError as exc:  # the sim's own hb watchdog still stops it within 500 ms
+            return
+        except SimError as exc:
+            self.health.error("sim", str(exc))
+            err = str(exc)
+        if rc is None or not rc.motion_live or self.run is not rc or self.mode != "PAUSED":
+            return
+        log.warning("pause not confirmed (%s): aborting the motion", err)
+        self.presenter.trace("run", rc.run_id, {"pause_error": err, "escalated": "ctl.abort"})
+        try:
+            await self.sim.abort(self.epoch)
+        except SimError as exc:  # unreachable: no ctl.hb gets through either, so the sim watchdog stops it
             self.health.error("sim", str(exc))
 
     def _offer_resume(self, reason: str) -> None:
@@ -1227,16 +1300,20 @@ class Session:
     async def _resume(self) -> None:
         if self.mode != "PAUSED":
             return
-        try:
-            await self.sim.resume(self.epoch)
-        except SimError as exc:
-            self.health.error("sim", str(exc))
-            self._notice("Could not resume", level="error")
-            self._offer_resume(self.pause_reason or "paused")
-            return
+        rc = self.run
+        if rc is not None and rc.motion_live:
+            try:
+                await self.sim.resume(self.epoch)
+            except SimError as exc:
+                self.health.error("sim", str(exc))
+                self._notice("Could not resume", level="error")
+                self._offer_resume(self.pause_reason or "paused")
+                return
+        # else: paused between motions; nothing to resume in the sim, the run task continues.
         self.hb.face_absent_since_ms = None if self.hb.face_present else self.hb.face_absent_since_ms
         self.pause_reason = None
         self._set_mode("EXECUTING")
+        self._unpaused.set()
         if self.run is not None:
             self._send_run(self.run, "executing")
 
@@ -1257,6 +1334,7 @@ class Session:
         self.run = None
         self.plan = None
         self.run_task = None
+        self._unpaused.set()
         self._set_mode("ESTOPPED")
 
     def on_estop_seq(self, seq: int) -> None:
@@ -1266,26 +1344,55 @@ class Session:
         self.epoch = max(self.epoch, epoch)
 
     def reset_estop(self, msg: EStopReset) -> bool:
-        """`estop.reset`: back to IDLE. The interrupted run stays aborted, never resumed."""
+        """`estop.reset` (already authorised by SafetyChannel): back to IDLE. The interrupted
+        run stays aborted, never resumed: a ctl.abort clears anything the sim still holds."""
         if self.mode != "ESTOPPED":
             self.out.to_phone(self.state_msg())
             return False
         self.plan = None
         self.run = None
         self.live = None
+        self._spawn(self._abort_quiet(), "abort-after-reset")
         self._set_mode("IDLE")
         self._notice("Stop cleared", speak=True)
         self._after_idle()
         return True
 
+    def refuse_reset(self, why: str) -> None:
+        """An `estop.reset` that may not clear the latch: stay ESTOPPED, tell the phones."""
+        self.out.to_phone(self.state_msg())
+        if why.startswith("the robot"):
+            self._notice("The robot has not confirmed the stop yet", level="warn", speak=True)
+
+    async def _abort_quiet(self) -> None:
+        with contextlib.suppress(SimError):
+            await self.sim.abort(self.epoch)
+
     # ================================================================ sim status
 
     async def on_sim_status(self, s: SimStatus) -> None:
+        if s.phase == "idle":
+            # The sim's idle status carries its epoch (after ctl.load_scene): a restarted
+            # gateway adopts it, so its commands are not refused as stale.
+            self.on_sim_epoch(s.epoch)
+            return
         rc = self.run
-        if rc is None or s.epoch < self.epoch:
+        if s.epoch < self.epoch:
             return  # stale (e.g. from before an e-stop)
-        if s.run_id == rc.sim_run_id:
+        if rc is not None and s.run_id == rc.sim_run_id:
             rc.queue.put_nowait(s)
+            return
+        if s.phase in ("executing", "paused") and s.run_id:
+            # A motion the gateway is not tracking (e.g. accepted after its ack timed out):
+            # it must not keep moving. Abort it (at most every 500 ms per run).
+            now = self.clock()
+            if now - self._stray_aborts.get(s.run_id, -10_000) >= 500:
+                self._stray_aborts[s.run_id] = now
+                if len(self._stray_aborts) > 50:
+                    self._stray_aborts.pop(next(iter(self._stray_aborts)))
+                log.warning("sim is running %s, which the gateway does not track: aborting", s.run_id)
+                self.presenter.trace("run", s.run_id, {"stray_run": s.phase, "action": "ctl.abort"})
+                self._spawn(self._abort_quiet(), "abort-stray")
 
     # ================================================================ idle work
 

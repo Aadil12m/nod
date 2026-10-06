@@ -102,7 +102,7 @@ async def test_estop_mid_run_aborted_never_resumed(tmp_path):
         await rig.inject("utterance", text="tidy up the bottle")
         assert (await rig.state())["mode"] == "ESTOPPED"
         # reset -> IDLE; the interrupted run is never resumed
-        await safety.send("estop.reset", estop_seq=3, gesture="long_blink", held_ms=820)
+        await safety.send("estop.reset", estop_seq=3, gesture="long_blink", held_ms=820, resume_token=rig.token)
         await phone.wait_type("state", mode="IDLE")
         await asyncio.sleep(0.6)
         later = [m for m in phone.msgs[phone.cursor :] if m["type"] == "run" and m["run_id"] == rid]

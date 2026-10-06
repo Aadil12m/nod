@@ -24,7 +24,7 @@ export const DEFAULTS = Object.freeze({
   blink_off: 0.35,
   long_blink_ms: 700, // calibrated range 600-1200
   long_blink_max_ms: 4000, // eyes closed longer than this is not a confirm (dozing); see DEVIATIONS
-  gap_ms: 80, // open gaps shorter than this inside a closure are ignored
+  gap_ms: 80, // open gaps shorter than this (real time between closed samples) inside a closure are ignored
   ring_show_ms: 250, // progress events start after this, so natural blinks do not flash the ring
   blink_jaw_cancel: 0.25, // jaw activity above this during the hold cancels the confirm
   // Double blink (never starts motion)
@@ -79,25 +79,44 @@ export function jawScore(bs) {
 
 /**
  * Hysteresis detector with gap merging and an observable "pending release".
- * Active from the first sample >= on until the signal has stayed below off for
- * at least gapMs. `lowSince` is when the signal first dropped below off.
+ * Active from the first sample >= on until the signal has been below off for
+ * gapMs. `lowSince` is when the signal first dropped below off.
+ *
+ * The gap is measured in real time from the LAST sample that was still above
+ * off (`lastHigh`), not from the first low sample: two closures are merged only
+ * if the span between the closed samples on either side of the gap is shorter
+ * than gapMs. That span is an upper bound on the true open time, so an open gap
+ * of gapMs or more never merges at any frame rate (at low frame rates even a
+ * shorter flicker may split a closure, which only costs a missed confirm).
  */
 class Hold {
   constructor() { this.reset(); }
-  reset() { this.active = false; this.start = 0; this.lowSince = null; }
+  reset() { this.active = false; this.start = 0; this.lowSince = null; this.lastHigh = 0; }
   /** Returns 'began' | 'held' | 'low' | 'ended' | 'idle'. On 'ended', `this.endedAt` is the release time. */
   step(t, x, on, off, gapMs) {
     if (!this.active) {
-      if (x >= on) { this.active = true; this.start = t; this.lowSince = null; return 'began'; }
+      if (x >= on) { this.active = true; this.start = t; this.lastHigh = t; this.lowSince = null; return 'began'; }
       return 'idle';
     }
     if (x < off) {
       if (this.lowSince === null) this.lowSince = t;
-      if (t - this.lowSince >= gapMs) { this.active = false; this.endedAt = this.lowSince; this.lowSince = null; return 'ended'; }
+      if (t - this.lastHigh >= gapMs) return this._end();
       return 'low';
     }
+    if (this.lowSince !== null && t - this.lastHigh >= gapMs) {
+      // Closed again, but only after an open span of at least gapMs (sparse frames): that was a
+      // separate closure. The caller may begin a new one on this same sample.
+      return this._end();
+    }
     this.lowSince = null; // closed again within the gap: same closure
+    this.lastHigh = t;
     return 'held';
+  }
+  _end() {
+    this.active = false;
+    this.endedAt = this.lowSince;
+    this.lowSince = null;
+    return 'ended';
   }
 }
 
@@ -280,7 +299,12 @@ export class GestureMachine {
 
   _stepBlink(t, blink, jaw, turned, out) {
     const c = this.cfg;
-    const r = this.blink.step(t, blink, c.blink_on, c.blink_off, c.gap_ms);
+    let r = this.blink.step(t, blink, c.blink_on, c.blink_off, c.gap_ms);
+    if (r === 'ended' && blink >= c.blink_on) {
+      // A closure ended by a long open span, and this sample starts the next one.
+      this._blinkEnded(t, out);
+      r = this.blink.step(t, blink, c.blink_on, c.blink_off, c.gap_ms); // 'began'
+    }
     if (r === 'began') {
       this.blinkState = { suppressed: turned, cancelled: false, consumed: false, shown: false };
       if (this.dblCandidateAt !== null) this.dblCandidateAt = null; // a third blink: not a double
@@ -288,13 +312,7 @@ export class GestureMachine {
     const s = this.blinkState;
     if (!s) return;
     if (r === 'ended') {
-      const dur = this.blink.endedAt - this.blink.start;
-      if (!s.suppressed && !s.cancelled && !s.consumed) {
-        if (s.shown) this._ev(out, t, 'long_blink', 'cancelled', { held_ms: Math.round(dur), reason: 'too_short' });
-        if (dur >= c.dbl_min_ms && dur <= c.dbl_max_ms) this._shortBlink(this.blink.start, this.blink.endedAt);
-        else this.shortBlinks = [];
-      }
-      this.blinkState = null;
+      this._blinkEnded(t, out);
       return;
     }
     if (r === 'idle') return;
@@ -329,6 +347,21 @@ export class GestureMachine {
       if (!s.shown) { s.shown = true; this._ev(out, t, 'long_blink', 'start', { held_ms: Math.round(held), progress }); }
       else this._ev(out, t, 'long_blink', 'progress', { held_ms: Math.round(held), progress });
     }
+  }
+
+  /** The closure in `this.blink` has ended (eyes open for at least gap_ms). */
+  _blinkEnded(t, out) {
+    const c = this.cfg;
+    const s = this.blinkState;
+    if (s) {
+      const dur = this.blink.endedAt - this.blink.start;
+      if (!s.suppressed && !s.cancelled && !s.consumed) {
+        if (s.shown) this._ev(out, t, 'long_blink', 'cancelled', { held_ms: Math.round(dur), reason: 'too_short' });
+        if (dur >= c.dbl_min_ms && dur <= c.dbl_max_ms) this._shortBlink(this.blink.start, this.blink.endedAt);
+        else this.shortBlinks = [];
+      }
+    }
+    this.blinkState = null;
   }
 
   _shortBlink(start, end) {

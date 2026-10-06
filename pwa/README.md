@@ -55,7 +55,11 @@ phone with the keyboard: B opens the menu, a typed "I'm a bit hungry" brings the
 options, Right/Left move focus, a held Enter confirms the snack plan and step 1 runs to done; step
 2 is confirmed and Space stops it mid-run (STOPPED latch, `estop.ack`, run aborted), and a long
 blink on "Clear stop?" returns to IDLE without resuming. The presenter page, open throughout,
-must have received the trace. It captures every WebSocket frame through Playwright and reads the
+must have received the trace. Then "bring me the bowl" offers `bowl_to_user` (near the user, first
+use: a double confirm), which takes exactly two long blinks: the gateway answers the first with a
+fresh nonce. Finally a run is started from the menu and the page is
+hidden mid-run (in keyboard mode the heartbeat's `face_present` means "page visible"): the
+gateway pauses, offers "Resume?", and a long blink resumes the same run to done. It captures every WebSocket frame through Playwright and reads the
 gateway's own state from `/api/dev/state`. `--screenshots DIR` (`make screenshots`) saves the
 four images in `docs/screenshots/`.
 

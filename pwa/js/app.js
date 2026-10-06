@@ -43,6 +43,7 @@ let link = null;
 const speak = (t, o) => tts.speak(t, o);
 const estop = new EStopController({
   send: (m) => link?.safety.send(m),
+  getToken: () => link?.resumeToken ?? null,
   vibrate: (p) => navigator.vibrate?.(p),
   speak: (t) => tts.speak(t, { urgent: true }),
   onChange: () => render(),
@@ -311,6 +312,7 @@ setInterval(() => {
     track_conf: cameraOn ? lastFrame?.track_conf ?? 0 : 0,
     fps: cameraOn ? lastFrame?.fps ?? 0 : 0,
     latched: estop.latched,
+    resume_token: link.resumeToken,
   }));
 }, RESEND_MS);
 

@@ -133,10 +133,16 @@ class Gateway:
         )
         self.session.verifier = verifier if verifier is not None else self._make_verifier()
         self.safety = SafetyChannel(
-            cfg, self.sim, self.session, self.hb, metrics=self.metrics, presenter=self.presenter
+            cfg,
+            self.sim,
+            self.session,
+            self.hb,
+            metrics=self.metrics,
+            presenter=self.presenter,
+            lease_of=self.lease_of,
         )
         self.dev_peer = Peer(None, "safety", self.out.sess)  # collects acks for /api/dev/inject e-stops
-        self.dev_peer.lease = "user"
+        self.dev_peer.lease = "user"  # dev injection (mock mode or NOD_DEV=1) acts as the user's phone
         self.tasks: list[asyncio.Task] = []
         self.scene_loaded = False
 
@@ -248,6 +254,20 @@ class Gateway:
             await asyncio.sleep(0.05)
 
     # ------------------------------------------------------------ message dispatch
+
+    def lease_of(self, peer: Peer | None, token: str | None) -> str:
+        """The lease of the phone session a /ws/safety message belongs to (by resume_token).
+
+        A safety socket has no hello of its own: the phone puts the token from its `welcome`
+        in every `hb` and `estop.reset`. Unknown or missing tokens get "none"."""
+        if peer is self.dev_peer:
+            return self.dev_peer.lease
+        if not token:
+            return "none"
+        for p in self.out.phones:
+            if p.resume_token == token and not p.closed:
+                return p.lease
+        return "none"
 
     def welcome(self, peer: Peer, hello: Hello) -> None:
         if hello.role == "caregiver":

@@ -158,3 +158,30 @@ test('e-stop: reset only after the ack; unlatch only when the gateway leaves EST
   e.trigger('button');
   assert.equal(sent.at(-1)[1].estop_seq, 2);
 });
+
+test('e-stop: the reset carries the resume_token and the newest stop the gateway reported', () => {
+  const sent = [];
+  let t = 0;
+  const e = new EStopController({ send: (m) => (sent.push(m), true), now: () => t, getToken: () => 'rt_me' });
+  e.trigger('jaw_hold');
+  e.onMessage({ type: 'estop.ack', estop_seq: 1, lat_ms: {} });
+  e.onMessage({ type: 'state', mode: 'ESTOPPED', estop_seq: 1 });
+  e.onMessage({ type: 'state', mode: 'ESTOPPED', estop_seq: 4 }); // the presenter stopped too
+  assert.equal(e.requestReset('long_blink', 800), true);
+  assert.deepEqual([sent.at(-1)[1].estop_seq, sent.at(-1)[1].resume_token], [4, 'rt_me']);
+});
+
+test('e-stop: a newer stop while our reset is in flight re-offers "Clear stop?"; a reset elsewhere unlatches', () => {
+  const sent = [];
+  const e = new EStopController({ send: (m) => (sent.push(m), true), now: () => 0 });
+  e.trigger('jaw_hold');
+  e.onMessage({ type: 'estop.ack', estop_seq: 1, lat_ms: {} });
+  assert.equal(e.requestReset('long_blink', 800), true);
+  e.onMessage({ type: 'state', mode: 'ESTOPPED', estop_seq: 2 }); // refused: a newer stop exists
+  assert.equal(e.resetPending, false);
+  assert.equal(e.latched, true);
+  assert.equal(e.canReset(), true);
+  // A caregiver clears it from their phone: the gateway reports IDLE for the newest stop.
+  e.onMessage({ type: 'state', mode: 'IDLE', estop_seq: 2 });
+  assert.equal(e.latched, false);
+});

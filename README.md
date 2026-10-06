@@ -259,7 +259,9 @@ make lint      # ruff, shellcheck, actionlint, docker compose config
 `make test` runs: protocol (models, schema check), gateway (validator, safety, mock end-to-end
 with an e-stop mid-run, and the gateway against the real sim runner on its CPU FakeEnv), PWA unit
 tests, the PWA against a stub gateway in Chromium, the full mock end-to-end (Chromium, the real
-PWA, the real gateway in mock mode: `pwa/tests/e2e_full.mjs`), sim, eval, viewer, training and
+PWA, the real gateway in mock mode, with STOP mid-run, a double-confirm option and a face-lost
+pause and resume:
+`pwa/tests/e2e_full.mjs`), sim, eval, viewer, training and
 infra. The browser tests need a Chromium (`PLAYWRIGHT_BROWSERS_PATH` or `CHROME_PATH`). Run one
 suite with `make test-<name>`; `make help` lists them.
 

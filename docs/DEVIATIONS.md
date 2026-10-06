@@ -101,11 +101,12 @@ gateway can import the package without numpy. ormsgpack is optional and used aut
 | `estop` before `welcome` | Sent with `sess: null` if the stop happens before the session exists | Safety first; the gateway should not drop it |
 | Where acks arrive | Gateway messages are accepted from either socket | `estop.ack` on `/ws/safety` is natural, `state` on `/ws/phone` |
 | Gateway forgot a stop | If the phone is latched and a `state` arrives with a lower `estop_seq` and a mode other than ESTOPPED, the phone sends its `estop` again | Covers a gateway restart; never resumes anything |
-| Unlatch | The phone clears its red latch only after it sent `estop.reset` and a `state` arrives with mode other than ESTOPPED and `estop_seq` at least its own | ISO 13850: only an explicit reset clears the stop |
+| Unlatch | The phone clears its red latch only when a `state` arrives with mode other than ESTOPPED and `estop_seq` at least its own, after its own `estop.reset` or an authorised reset from another device (caregiver phone). `estop.reset` carries the newest stop the phone knows of (`max(own seq, state.estop_seq)`) and the phone's `resume_token`; if a newer stop arrives while the reset is in flight, "Clear stop?" is offered again | ISO 13850: only an explicit reset clears the stop; the gateway refuses resets for an older stop |
 | "None of these" | `ui.cancel` with `source: "none_of_these"`; listening with no speech for 8 s sends `ui.cancel` with `source: "timeout"` | Open-ended `source` values |
 | `ui.focus` | Not sent when focus lands on the fixed "None of these" card | It is not a proposal option |
 | REPLAY badge | Read from `GET /healthz` field `mode` (`mock` shows the badge); a `mode` field in `welcome` is also honoured if added later | `Welcome` has no mode field |
 | Presenter | Needs `state`, `run`, `proposal`, `estop.ack`, `notice` and `transcript` mirrored on `/ws/presenter`, in addition to `trace`, `metrics`, `cosmos.*`. It treats `state` ESTOPPED with `estop_seq` at least its own as an ack of its own stop. 3D view URL from `?viewer=`, else `/healthz` `viewer_url`, else port 8080 on the same host | `PRESENTER_OUT_TYPES` lists only the presenter-specific types |
+| Heartbeat and reset binding | `hb` and `estop.reset` carry `resume_token` (from `welcome` on /ws/phone), an optional field added to the protocol | The gateway counts presence and freshness only from the user-lease phone (review fix, see "Review fixes") |
 | Keyboard mode heartbeat | With no camera (`?nocam=1` or camera failure), `hb.face_present` is true while the page is visible, `track_conf` and `fps` are 0, and `hello.calib.fps` is 0 | The keyboard fallback (4.4) must be able to confirm (R9 checks `face_present`). The gateway can spot keyboard sessions by `track_conf: 0` |
 | Gesture telemetry | Keyboard gestures are sent as ordinary `gesture` messages; `scores` keys are `blink`, `brow`, `jaw` | The keyboard runs through the same gesture machine |
 
@@ -123,13 +124,20 @@ gateway can import the package without numpy. ormsgpack is optional and used aut
 - Double blink is detected and sent as telemetry, but using it as "back" is off by default
   (`doubleBlinkBack`), because natural double blinks happen 1.4 to 3.6 times a minute (6.1).
 - STOP from any channel is an e-stop when motion is possible: mode COUNTDOWN, EXECUTING, POSTCHECK
-  or PAUSED, a run whose last phase is not terminal, or a `ui.confirm` sent less than 3 s ago with
-  no answer. Otherwise it cancels (choose, listening, planning) or does nothing (idle).
+  or PAUSED, a run whose last phase is not terminal, a `ui.confirm` with no gateway message on
+  /ws/phone since it was sent (not only for 3 s), or /ws/phone not connected (the phone cannot
+  know the mode). Otherwise it cancels (choose, listening, planning) or does nothing (idle); the
+  gateway answers a cancel in IDLE with a `ctl.abort` to the sim, which is a no-op unless the sim
+  runs something the gateway lost track of.
 - "Clear stop?" is offered 1.5 s after the latch and only once the stop is acked; the clearing
   long blink must start after the prompt appeared.
 - An `aborted` run shows no result screen; the stopped screen already said so.
-- Confirm `double` (R6, R7, R14) is done on the phone: the first long blink asks "once more", and
-  only the second sends `ui.confirm`. Focus changes or 8 s reset it.
+- Confirm `double` (R6, R7, R14) is done once, on the gateway: every long blink sends `ui.confirm`;
+  the gateway answers the first with the same proposal and a fresh nonce, and the phone then shows
+  "Blink long once more to confirm" with the arm delay and focus dwell restarted. (Earlier the
+  phone also staged it locally, so a double option needed four blinks.)
+- A proposal resent with the same `proposal_id` and nonce (pre-check results) is updated in place:
+  the user's focus, the timers and a blink in progress are kept.
 - Mic: opens when the gateway mode is LISTENING, or right after a brow raise (optimistic). The phone
   finds the start and end of speech with an energy VAD and sends `utter.start` at speech onset
   (with 300 ms of pre-roll), not when the mic opens. Utterances are capped at 10 s.
@@ -198,11 +206,14 @@ gateway can import the package without numpy. ormsgpack is optional and used aut
   otherwise by its weakest step.
 - R9 extras beyond the table: the arm delay and the focus dwell are checked twice, on the
   gateway clock and on the phone's own timestamps (`ts`, `shown_at`, `focused_at`, compared only
-  with each other, so no clock offset is needed); `double_blink` is rejected as a confirm gesture;
-  and a `long_blink` confirm must be held at least `min_confirm_hold_ms` (600 ms).
-- A double confirm (R6, R14 first use) works like this: the first valid confirm answers
+  with each other, so no clock offset is needed); only allow-listed confirm gestures are accepted
+  (`long_blink`, held at least `min_confirm_hold_ms` = 600 ms, and the calibrated alternative
+  `head_hold`, held at least 1500 ms); anything else, `double_blink` included, is rejected.
+- A double confirm (R6, R7, R14 first use) works like this: the first valid confirm answers
   `confirm_result` with outcome `second`, and the proposal is sent again with a fresh nonce; the
-  arm delay and the 300 ms focus dwell start again.
+  arm delay and the 300 ms focus dwell start again. A plan card takes the confirm policy of its
+  first step (confirming it starts step 0 at once), so a plan that starts with a high-risk,
+  first-use near-user or less reliable step needs a double confirm.
 - Pre-checks (5.4) run per option after the card is shown. When one finishes, the proposal is sent
   again with the same `proposal_id` and nonce and the updated `precheck`. If a pre-check answers
   "unsure" after a single-confirm card was already confirmed, the run is aborted before any motion
@@ -457,3 +468,63 @@ behaviour changed.
   and later carry the original plan proposal's `proposal_id` and `option_id` (not the id of the
   "Step 2 of 3" proposal that was confirmed); `plan_step` tells the steps apart. The full
   end-to-end test relies on `plan_step`.
+- **Pause and resume against the real gateway.** The full mock end-to-end now also covers the
+  face-lost pause: the page is hidden mid-run (keyboard mode reports the face as present only
+  while the page is visible), the gateway pauses after 1 s, offers its one-option "Resume?"
+  proposal, and a long blink resumes the same `run_id` to done. This closes the pwa/ note that the
+  "Resume?" card had been unit-tested but not run against the gateway. No code change was needed.
+- **Brow raise can show the prefetched suggestions.** Observed, not changed: once the gateway has
+  prefetched planner suggestions in IDLE (7.1 fast path), a brow raise shows those (source
+  `fake` in mock mode) instead of the deterministic menu (source `menu`). The test accepts either.
+
+## Review fixes (whole repo)
+
+Changes made after the review findings; each has a regression test.
+
+- **Protocol: `hb.resume_token` and `estop.reset.resume_token`** (optional, default null). The
+  safety socket has no `hello` of its own, so the phone puts the `resume_token` from its `welcome`
+  into these two messages. The gateway uses the heartbeat for the watchdogs (5.6) and the R9
+  `face_present` and `hb_fresh` checks only when the token belongs to the phone holding the
+  `user` lease; heartbeats from other devices (caregiver phone, a second tab, the previous device
+  after the lease moved) are ignored for presence. A `latched` heartbeat from any device still
+  latches the gateway, and an `estop` from any socket is still a stop. The dev inject endpoint acts
+  as the user's phone.
+- **`estop.reset` is authorised** (gateway): only from the user-lease phone (a `long_blink` held at
+  least `min_confirm_hold_ms`, or `touch` for a caregiver touching that phone) or a caregiver-lease
+  phone (`touch` or `long_blink`); only for the latest latched stop (`estop_seq` not older than
+  the session's `state.estop_seq`); and only once the sim has acknowledged every stop
+  (`sim.estop_ack`), else the phone is told "The robot has not confirmed the stop yet". A refused
+  reset re-sends `state` and leaves the latch. A successful reset also sends `ctl.abort`.
+- **Unacknowledged `ctl.estop` is resent** every 250 ms until `sim.estop_ack` arrives (the PUSH
+  socket drops it while the sim is disconnected).
+- **Sim e-stop de-duplication.** A repeated `estop_seq` re-acks (fresh timestamps, no epoch bump)
+  only when nothing is running or queued; while a run is in flight or queued it is a new stop.
+  `ctl.load_scene` clears the remembered seqs and publishes `sim.status` with `phase: idle` and the
+  sim's epoch; the gateway adopts that epoch, so a restarted gateway's commands are not refused as
+  stale. Reason: the gateway's counter restarts at 1 with the process.
+- **Sim queued runs.** A `ctl.estop` that arrives after a run was accepted but before it started
+  drops it (published as `aborted`, step 0); the loop also re-checks the epoch right before
+  starting a queued run. A `ctl.pause` in that window makes the run start paused (it was refused
+  with "no run"); `ctl.resume` undoes that; `ctl.abort` drops it and reports `aborted`.
+- **Gateway protective pause.** If `ctl.pause` is refused or not answered while a motion of ours
+  may be in flight, the gateway escalates to `ctl.abort`. A pause that lands between motions (the
+  skill just finished) holds the next motion (`return_home`, `handover_retreat`, the post-check)
+  until the user resumes; "Cancel" on the "Resume?" card then ends the run as aborted. Resuming
+  between motions sends no `ctl.resume` (nothing to resume in the sim).
+- **Lost motion acks.** When `ctl.run_skill` or `ctl.run_scripted` is refused or its ack times
+  out, the gateway sends `ctl.abort` before reporting "The robot did not start". A `sim.status`
+  at the current epoch for a run the gateway does not track (`executing` or `paused`) gets a
+  `ctl.abort` (at most every 500 ms per run).
+- **R7/R14 in "whole plan" mode.** A later plan step that needs a double confirm (high risk,
+  near the user on first use, less reliable) is offered on its own card instead of starting on
+  the 3 s countdown.
+- **Planner mechanism memory per model.** The structured-output mechanism that worked is
+  remembered per model (Lightning and Super may differ); a rejected remembered mechanism falls
+  through to the others in the same call.
+- **Blink gap merging** (pwa). The 80 ms open gap is measured in real time between the closed
+  samples on either side of it (not from the first open sample), so two closures separated by an
+  open gap of 80 ms or more are never merged at any frame rate or frame phase. At low frame rates
+  a short flicker inside a deliberate long blink may now split it (a missed confirm, the safe
+  direction). The flicker unit test uses a 30 ms flicker (about 55 ms open at the thresholds).
+- **Licence notice.** `sim/bddl/nod/bring_the_bowl_to_me.bddl` carries the LIBERO MIT notice, and
+  `THIRD_PARTY_NOTICES.md` lists it.

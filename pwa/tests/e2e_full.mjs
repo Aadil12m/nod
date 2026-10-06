@@ -8,6 +8,9 @@
 //      estop.ack arrives, the run is aborted (never resumed).
 //   4. A long blink on "Clear stop?" sends estop.reset and the gateway goes back to IDLE.
 //   5. The presenter page, open the whole time, received trace messages and shows them.
+//   6. A "double" option (bowl_to_user, first use) is confirmed with exactly two long blinks.
+//   7. A run from the menu; the page is hidden mid-run (no face in keyboard mode): the
+//      gateway pauses, offers "Resume?", and a long blink resumes the same run to done.
 // All WebSocket traffic is captured through Playwright's websocket events, and the gateway's
 // own view is read from GET /api/dev/state (mock mode only).
 //
@@ -224,7 +227,9 @@ try {
     hungry = await until(() => got('proposal').slice(n0).find((x) => x.transcript === "I'm a bit hungry" && x.source !== 'menu'), 'planner proposal');
     assert.equal(hungry.source, 'fake');
     await waitScreen('choose');
-    await page.waitForFunction((id) => !!document.querySelector(`.card[data-option="${id}"]`), hungry.options[0].option_id);
+    // Wait for the planner's cards themselves: the menu shown before also has an option o1.
+    await page.waitForFunction(([pid, id]) => !!document.querySelector(`.card[data-proposal="${pid}"][data-option="${id}"]`),
+      [hungry.proposal_id, hungry.options[0].option_id]);
     const labels = await page.locator('.card').allInnerTexts();
     if (verbose) console.log('     options:', JSON.stringify(hungry.options.map((o) => [o.option_id, o.kind, o.skill_ids, o.label, o.confirm])));
     // Labels come from the registry (R13); the first option is the snack plan.
@@ -348,6 +353,83 @@ try {
     await pres.waitForFunction(() => /ms/.test(document.getElementById('estop-last').textContent), null, { timeout: 3000 });
     assert.match(await pres.locator('#run').innerText(), /cheese_in_bowl aborted/);
     await shot(pres, '04_presenter.png');
+  });
+
+  await step('a "double" option (near the user, first use) takes exactly two long blinks', async () => {
+    // The double confirm lives on the gateway (validate_confirm): the phone sends every long blink;
+    // the gateway answers the first with the same card and a fresh nonce.
+    const n0 = got('proposal').length;
+    await page.fill('#utter-text', 'bring me the bowl');
+    await page.press('#utter-text', 'Enter');
+    const card = await until(() => got('proposal').slice(n0).find((p) => p.options.some((o) => o.skill_ids?.includes('bowl_to_user'))), 'bowl_to_user proposal');
+    const opt = card.options.find((o) => o.skill_ids?.includes('bowl_to_user'));
+    assert.equal(opt.confirm, 'double', JSON.stringify(opt));
+    await page.locator('#screen').click({ position: { x: 5, y: 5 } });
+    await waitScreen('choose');
+    await page.waitForFunction(([pid, id]) => document.querySelector(`.card.focused[data-proposal="${pid}"]`)?.dataset.option === id,
+      [card.proposal_id, opt.option_id]);
+    await sleep(600);
+    const nConf = sent('phone', 'ui.confirm').length;
+    await holdEnter(900);
+    const first = await until(() => sent('phone', 'ui.confirm').slice(nConf)[0], 'first ui.confirm');
+    assert.equal(first.nonce, card.nonce);
+    const again = await until(() => got('proposal').find((p) => p.proposal_id === card.proposal_id && p.nonce !== card.nonce), 'second-confirm card (fresh nonce)');
+    await until(() => got('notice').some((nm) => /once more/i.test(nm.text)), '"once more" notice');
+    assert.equal((await gw.state()).mode, 'AWAITING_CONFIRM', 'one blink did not start anything');
+    await sleep(700); // the arm delay and focus dwell start again
+    await holdEnter(900);
+    const second = await until(() => sent('phone', 'ui.confirm').slice(nConf)[1], 'second ui.confirm');
+    assert.equal(second.nonce, again.nonce);
+    const run = await until(() => got('run').find((r) => r.proposal_id === card.proposal_id && r.phase === 'executing'), 'bowl_to_user executing', 8000);
+    assert.equal(run.skill_id, 'bowl_to_user');
+    assert.equal(sent('phone', 'ui.confirm').length - nConf, 2, 'two long blinks in total');
+    const end = await until(() => runMsgs(run.run_id).find((r) => ['done', 'failed', 'uncertain', 'aborted'].includes(r.phase)), 'bowl_to_user end', 20000);
+    assert.equal(end.phase, 'done', JSON.stringify(end));
+    await until(async () => (await gw.state()).mode === 'IDLE', 'gateway IDLE after bowl_to_user', 20000);
+  });
+
+  await step('face lost mid-run pauses; the gateway\'s "Resume?" card resumes the same run to done', async () => {
+    // A third run from the menu. In keyboard mode the heartbeat's face_present is "page visible",
+    // so hiding the page is how this test takes the face away (design 5.6, face lost 1000 ms).
+    const n0 = got('proposal').length;
+    await page.keyboard.press('b');
+    // The deterministic menu, or the planner's prefetched suggestions (7.1 fast path) once the
+    // gateway has had time to prefetch in IDLE; either is fine here.
+    await until(() => got('proposal').length > n0, 'a proposal after B');
+    await waitScreen('choose');
+    await sleep(300);
+    const menu = got('proposal').at(-1);
+    const opt = menu.options.find((o) => !o.locked && o.option_id === menu.focus) || menu.options.find((o) => !o.locked);
+    assert.ok(opt, `an unlocked menu option in ${JSON.stringify(menu.options)}`);
+    await page.waitForFunction((id) => document.querySelector('.card.focused')?.dataset.option === id, opt.option_id);
+    await sleep(600); // arm delay and focus dwell
+    await holdEnter(900);
+    await until(() => sent('phone', 'ui.confirm').some((c) => c.proposal_id === menu.proposal_id), 'confirm of the menu option');
+    const run3 = await until(() => got('run').find((r) => r.proposal_id === menu.proposal_id && r.phase === 'executing' && r.sim_step > 5), 'run 3 executing', 8000);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    });
+    await until(() => sent('safety', 'hb').at(-1)?.face_present === false, 'hb face_present false');
+    await until(() => runMsgs(run3.run_id).some((r) => r.phase === 'paused'), 'run 3 paused', 4000);
+    assert.equal((await gw.state()).mode, 'PAUSED');
+    const resume = await until(() => got('proposal').find((p) => p.options.some((o) => o.option_id === 'resume')), 'resume proposal');
+    assert.match(resume.options[0].why, /can't see you/);
+    const stepAtPause = runMsgs(run3.run_id).filter((r) => r.phase === 'paused').at(-1).sim_step;
+    await sleep(600);
+    assert.ok(!runMsgs(run3.run_id).some((r) => r.phase === 'executing' && r.sim_step > stepAtPause + 2), 'no motion while paused');
+    await page.evaluate(() => { delete document.visibilityState; });
+    await until(() => sent('safety', 'hb').at(-1)?.face_present === true, 'hb face_present true');
+    await waitScreen('choose', 3000);
+    await page.waitForFunction(() => document.querySelector('.card.focused')?.dataset.option === 'resume', null, { timeout: 3000 });
+    await sleep(600);
+    await holdEnter(900);
+    const c = await until(() => sent('phone', 'ui.confirm').find((x) => x.proposal_id === resume.proposal_id), 'confirm of resume');
+    assert.equal(c.option_id, 'resume');
+    const nPaused = runMsgs(run3.run_id).findIndex((r) => r.phase === 'paused');
+    await until(() => runMsgs(run3.run_id).slice(nPaused).some((r) => r.phase === 'executing'), 'run 3 executing again', 4000);
+    const end = await until(() => runMsgs(run3.run_id).find((r) => ['done', 'failed', 'uncertain', 'aborted'].includes(r.phase)), 'run 3 end', 20000);
+    assert.equal(end.phase, 'done', JSON.stringify(end));
+    await until(async () => (await gw.state()).mode === 'IDLE', 'gateway IDLE after run 3', 20000);
   });
 
   await step('no uncaught errors in the pages', async () => {

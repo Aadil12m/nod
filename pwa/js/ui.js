@@ -15,7 +15,6 @@ export const DWELL_MS = 300; // focus must rest this long before an option is ar
 export const COUNTDOWN_MS = 1000;
 export const RESULT_MS = 6000; // how long done / failed / uncertain stays up
 export const CONFIRM_WAIT_MS = 3000; // no answer to ui.confirm within this: "Try again"
-export const DOUBLE_CONFIRM_MS = 8000; // second blink of a double confirm must come within this
 export const CLEAR_STOP_DELAY_MS = 1500; // "Clear stop?" is offered this long after the latch
 export const LOCAL_STATE_MS = 4000; // optimistic listening/planning without a gateway answer
 
@@ -63,6 +62,10 @@ export class UiMachine {
     this.run = null;
     this.result = null;
     this.pendingConfirm = null;
+    // A ui.confirm whose fate the phone has not heard yet: until any gateway message arrives on
+    // /ws/phone after it, motion may have started, so STOP must be an e-stop (not a cancel),
+    // even after CONFIRM_WAIT_MS has shown "Try again".
+    this.confirmUnresolved = false;
     this.lastConfirmed = null; // {option_id, label, plan_len}
     this.listeningLocal = null;
     this.planningLocal = null;
@@ -87,6 +90,11 @@ export class UiMachine {
 
   onServer(m) {
     const now = this.now();
+    // /ws/phone is ordered: whatever the gateway did with our confirm (state COUNTDOWN, a
+    // "Try again" notice, a resent proposal) comes before or with this message.
+    if (m.type === 'state' || m.type === 'proposal' || m.type === 'run' || m.type === 'notice' || m.type === 'welcome') {
+      this.confirmUnresolved = false;
+    }
     switch (m.type) {
       case 'welcome':
         if (m.mode === 'mock' || m.mode === 'replay') this.replay = true; // forward compatible
@@ -135,6 +143,30 @@ export class UiMachine {
   _setProposal(m, now) {
     const fixed = Array.isArray(m.fixed) && m.fixed.length ? m.fixed : [{ option_id: 'none', label: 'None of these' }];
     const items = [...(m.options || []).map((o) => ({ ...o, fixed: false })), ...fixed.map((f) => ({ ...f, fixed: true }))];
+    const cur = this.proposal;
+    if (cur && cur.msg.proposal_id === m.proposal_id) {
+      // The same proposal again. With the same nonce it is an in-place update (pre-check results):
+      // keep the user's focus, timers, blink ring and hint. With a new nonce it is the gateway's
+      // answer to the first blink of a double confirm: the arm delay and focus dwell start again
+      // on the focused option, and the next long blink is the second confirm.
+      const second = m.nonce !== cur.msg.nonce;
+      const focusId = second ? m.focus : cur.items[cur.focusIdx]?.option_id;
+      let idx = items.findIndex((it) => it.option_id === focusId);
+      if (idx < 0) idx = Math.max(0, items.findIndex((it) => it.option_id === m.focus));
+      cur.msg = m;
+      cur.items = items;
+      if (idx !== cur.focusIdx) { cur.focusIdx = idx; cur.focusedAt = now; }
+      if (second) {
+        cur.shownAt = now;
+        cur.focusedAt = now;
+        cur.stage = 1;
+        cur.stageAt = now;
+        this.pendingConfirm = null;
+        this.ring = null;
+        this.hint = 'Blink long once more to confirm';
+      }
+      return;
+    }
     let idx = items.findIndex((it) => it.option_id === m.focus);
     if (idx < 0) idx = 0;
     this.proposal = { msg: m, items, focusIdx: idx, shownAt: now, focusedAt: now, stage: 0, stageAt: null };
@@ -205,7 +237,6 @@ export class UiMachine {
       const p = this.proposal;
       const it = p.items[p.focusIdx];
       if (it.locked) return false;
-      if (p.stage === 1 && start < p.stageAt) return false;
       return start >= this.armedAt();
     }
     if (sc === 'stopped') return this._clearOfferedAt() !== null && start >= this._clearOfferedAt();
@@ -233,19 +264,15 @@ export class UiMachine {
       this.speak('That needs a caregiver');
       return;
     }
-    if (it.confirm === 'double' && p.stage === 0) {
-      p.stage = 1;
-      p.stageAt = now;
-      this.hint = 'Blink long once more to confirm';
-      this.speak('Once more to confirm');
-      return;
-    }
-    if (p.stage === 1 && start < p.stageAt) return;
+    // Every long blink goes to the gateway. A "double" option is confirmed twice: the gateway
+    // answers the first ui.confirm by resending the card with a fresh nonce (see _setProposal),
+    // so the double confirm is implemented once, on the gateway (validate_confirm).
     this.send('phone', msg.uiConfirm({
       proposal_id: p.msg.proposal_id, option_id: it.option_id, nonce: p.msg.nonce, gesture: 'long_blink',
       held_ms: ev.held_ms, shown_at: p.shownAt, focused_at: p.focusedAt,
     }));
     this.pendingConfirm = { at: now, option_id: it.option_id, label: it.label };
+    this.confirmUnresolved = true;
     this.lastConfirmed = { option_id: it.option_id, label: it.label, plan_len: it.skill_ids?.length || 1 };
     this.hint = null;
   }
@@ -322,7 +349,10 @@ export class UiMachine {
   /** Is the arm moving, or about to? Then STOP must be an e-stop, not a cancel. */
   motionPossible() {
     if (MOTION_MODES.has(this.mode)) return true;
-    if (this.pendingConfirm) return true; // a confirm is in flight
+    // Without /ws/phone the phone cannot know the gateway's mode (a COUNTDOWN or EXECUTING
+    // state may have been lost), and a ui.cancel could not be sent anyway: latch.
+    if (!this.connected.phone) return true;
+    if (this.pendingConfirm || this.confirmUnresolved) return true; // a confirm is in flight
     if (this.run && !TERMINAL_RUN_PHASES.has(this.run.phase)) return true;
     return false;
   }
@@ -365,10 +395,6 @@ export class UiMachine {
     if (this.pendingConfirm && now - this.pendingConfirm.at > CONFIRM_WAIT_MS) {
       this.pendingConfirm = null;
       this.hint = 'Try again';
-    }
-    if (this.proposal?.stage === 1 && now - this.proposal.stageAt > DOUBLE_CONFIRM_MS) {
-      this.proposal.stage = 0;
-      this.hint = null;
     }
     if (this.listeningLocal && now - this.listeningLocal.at > LOCAL_STATE_MS && this.mode !== 'LISTENING') this.listeningLocal = null;
     if (this.planningLocal && now - this.planningLocal.at > 4 * LOCAL_STATE_MS && this.mode !== 'PLANNING') this.planningLocal = null;
@@ -600,7 +626,7 @@ export class UiView {
       const badges = [...c.badges, c.confirm === 'double' ? 'Two blinks' : ''].filter(Boolean)
         .map((b) => `<span class="badge">${esc(b)}</span>`).join('');
       return `<li class="card${c.focused ? ' focused' : ''}${c.armed ? ' armed' : ''}${c.locked ? ' locked' : ''}${c.fixed ? ' fixed' : ''}"
-          role="option" aria-selected="${c.focused}" data-option="${esc(c.option_id)}" id="card-${i}">
+          role="option" aria-selected="${c.focused}" data-proposal="${esc(v.proposal_id)}" data-option="${esc(c.option_id)}" id="card-${i}">
         <div class="card-text"><div class="label">${esc(c.label)}</div>
           ${c.why ? `<div class="why">${esc(c.why)}</div>` : ''}
           ${meta ? `<div class="meta">${meta}</div>` : ''}${badges ? `<div class="badges">${badges}</div>` : ''}</div>

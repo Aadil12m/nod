@@ -18,8 +18,9 @@ export class EStopController {
    *          vibrate?:(p:number[])=>void, speak?:(t:string)=>void}} deps
    *   send: sends a proto.msg tuple on /ws/safety; returns a falsy value if it could not be sent.
    */
-  constructor({ send, now = () => Date.now(), onChange, vibrate, speak } = {}) {
+  constructor({ send, now = () => Date.now(), onChange, vibrate, speak, getToken } = {}) {
     this.sendFn = send;
+    this.getToken = getToken || (() => null); // resume_token from `welcome`: authorises estop.reset
     this.now = now;
     this.onChange = onChange || (() => {});
     this.vibrate = vibrate || (() => {});
@@ -35,6 +36,7 @@ export class EStopController {
     this.lastSent = -Infinity;
     this.sent = 0; // estop messages sent for the current stop
     this.resetPending = false;
+    this.resetSeq = null; // estop_seq the pending reset asked to clear
     this.latchedAt = null;
     this.ackedAt = null;
   }
@@ -100,8 +102,15 @@ export class EStopController {
         this.onChange(this);
         try { this.vibrate([200, 100, 200]); } catch { /* ignore */ }
         try { this.speak('Stopped'); } catch { /* ignore */ }
+      } else if (this.latched && m.mode === 'ESTOPPED' && this.resetPending && s > this.resetSeq) {
+        // A newer stop (presenter, caregiver) arrived while our reset was in flight: the gateway
+        // refused it. Stay latched and offer "Clear stop?" again for the newest stop.
+        this.resetPending = false;
+        this.seq = Math.max(this.seq, s);
+        this.onChange(this);
       } else if (this.latched && m.mode !== 'ESTOPPED') {
-        if (this.resetPending && s >= this.seq) {
+        if (s >= this.seq && (this.resetPending || this.acked)) {
+          // Cleared: by our own reset, or by an authorised reset from another device (caregiver).
           this._unlatch();
         } else if (!this.resetPending && s < this.seq && this.acked) {
           // The gateway does not know about our stop (it restarted?): send it again.
@@ -119,8 +128,11 @@ export class EStopController {
   /** Ask the gateway to clear the stop (long blink on "Clear stop?", or caregiver touch). */
   requestReset(gesture, held_ms = null) {
     if (!this.canReset()) return false;
-    const ok = this.sendFn(msg.estopReset({ estop_seq: this.seq, gesture, held_ms }));
-    if (ok) { this.resetPending = true; this.onChange(this); }
+    // Clear the newest stop the gateway has told us about (ours, or a newer one from elsewhere);
+    // the gateway refuses a reset for an older stop.
+    const seq = Math.max(this.seq, this.knownSeq);
+    const ok = this.sendFn(msg.estopReset({ estop_seq: seq, gesture, held_ms, resume_token: this.getToken() }));
+    if (ok) { this.resetPending = true; this.resetSeq = seq; this.onChange(this); }
     return !!ok;
   }
 

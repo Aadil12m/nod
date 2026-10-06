@@ -21,12 +21,17 @@ e-stop and ctl sockets, so a stop is never delayed by inference or by the pacing
 E-stop (5.5): on `ctl.estop` the loop performs a controlled stop (4 zero-motion steps with
 the gripper command held, run without pacing), halts physics stepping, increments `epoch`,
 drops every action chunk from the old epoch (queued, in flight or late), marks the run
-`aborted` and publishes `sim.estop_ack`. A run is never resumed after an e-stop. A repeated
-`estop_seq` is acknowledged again without a second epoch bump.
+`aborted` and publishes `sim.estop_ack`. A run is never resumed after an e-stop. A run that
+was accepted but has not started yet is dropped (published as `aborted`) and never starts.
+A repeated `estop_seq` with nothing in flight is acknowledged again without a second epoch
+bump; while a run is in flight or queued it stops it like a new seq (the seqs restart when
+the gateway restarts, and `ctl.load_scene` clears the remembered ones).
 
 Pause (5.6): `ctl.pause`, or no `ctl.hb` for `hb_timeout_ms` while a run is executing,
 performs the same controlled stop and holds the run in phase `paused` (fault `hb_lost`
 for the watchdog). `ctl.resume` continues it with a fresh chunk; `ctl.abort` ends it.
+A `ctl.pause` that arrives after a run was accepted but before it started makes it start
+paused (it is never refused with "no run" in that window).
 
 Limits (5.3), applied to every action before env.step:
     * every component finite and |a| <= limits.max_abs_action, else fault `nan_action`
@@ -235,6 +240,8 @@ class SimRunner:
         self._ext_estops: deque[tuple[CtlEStop, int]] = deque()  # from request_estop()
         self._pending_estops: list[tuple[CtlEStop, int]] = []
         self._next_cmd: RunSkill | RunScripted | None = None
+        self._next_paused = False  # ctl.pause arrived while _next_cmd was queued: start it paused
+        self._start_paused = False  # consumed by _execute for the run being started
         self._shutdown = threading.Event()
         self._ready = threading.Event()
         self._thread: threading.Thread | None = None
@@ -320,6 +327,11 @@ class SimRunner:
                 self._service_ctl()
                 if self._next_cmd is not None:
                     cmd, self._next_cmd = self._next_cmd, None
+                    start_paused, self._next_paused = self._next_paused, False
+                    if cmd.epoch < self.epoch:  # an e-stop moved the epoch on after it was accepted
+                        self._publish_dropped(cmd, "stale epoch")
+                        continue
+                    self._start_paused = start_paused
                     if isinstance(cmd, RunSkill):
                         self.run_policy_skill(cmd)
                     else:
@@ -372,12 +384,22 @@ class SimRunner:
             return
         pending, self._pending_estops = self._pending_estops, []
         for msg, t_rx in pending:
-            prev = self.handled_estops.get(msg.estop_seq)
-            if prev is not None:  # duplicate: acknowledge again, no second stop or epoch bump
-                self._publish(prev)
+            r = self.run
+            active = (r is not None and r.phase not in ("done", "failed", "aborted")) or self._next_cmd is not None
+            if msg.estop_seq in self.handled_estops and not active:
+                # Duplicate with nothing in flight: acknowledge again (fresh timestamps), no
+                # second epoch bump. A duplicate seq while something runs or is queued is
+                # treated as a new stop: the seq may come from a restarted gateway whose
+                # counter began again (a false stop is cheap, a lost one is not).
+                ack = self.handled_estops[msg.estop_seq].model_copy(
+                    update={"epoch": self.epoch, "stopped_at_step": None, "t_rx": t_rx, "t_halt": now_ms()}
+                )
+                self._publish(ack)
                 continue
             stopped_at = None
-            r = self.run
+            if self._next_cmd is not None:  # accepted but not started: it must never start
+                queued, self._next_cmd, self._next_paused = self._next_cmd, None, False
+                self._publish_dropped(queued, "e-stop")
             if r is not None and r.phase not in ("done", "failed", "aborted"):
                 stopped_at = self.controlled_stop() if r.phase == "executing" else r.step
                 r.phase, r.estopped, r.stopped_at_step = "aborted", True, stopped_at
@@ -403,6 +425,11 @@ class SimRunner:
             if r is not None:
                 r.discarded += 1
             self._inflight = None  # its result is never read
+
+    def _publish_dropped(self, cmd: RunSkill | RunScripted, why: str) -> None:
+        """A run that was accepted (sim.ack ok) but never started: report it as aborted."""
+        log.info("queued run %s dropped before it started (%s)", cmd.run_id, why)
+        self._publish(SimStatus(run_id=cmd.run_id, epoch=self.epoch, phase="aborted", step=0))
 
     def controlled_stop(self) -> int:
         """Category 1 analogue (5.5): 4 zero-motion steps holding the gripper, then stop stepping.
@@ -464,10 +491,16 @@ class SimRunner:
                 return self._ack(envelope, msg.req_id, False, "busy: a run is in flight")
             if msg.scene_id != self.scene_id:
                 return self._ack(envelope, msg.req_id, False, f"unknown scene {msg.scene_id}")
+            if self._next_cmd is not None:
+                return self._ack(envelope, msg.req_id, False, "busy: a run is queued")
             self.epoch = max(self.epoch, msg.epoch)
+            # A (re)connecting gateway starts its e-stop counter again: forget the old seqs.
+            self.handled_estops.clear()
             self.init_index = msg.init_index
             self.env.reset(msg.init_index)
             self._ack(envelope, msg.req_id, True)
+            # An idle status carries the sim's epoch, so a restarted gateway can adopt it.
+            self._publish(SimStatus(run_id=None, epoch=self.epoch, phase="idle", step=self.sim_step))
             self._publish_header()
             self._publish_world()
             return
@@ -490,7 +523,13 @@ class SimRunner:
                     r.abort_requested = True
                     self.stop_event.set()
                 elif self._next_cmd is not None:
-                    self._next_cmd = None
+                    queued, self._next_cmd, self._next_paused = self._next_cmd, None, False
+                    self._publish_dropped(queued, "ctl.abort")
+                return self._ack(envelope, msg.req_id, True)
+            if r is None and self._next_cmd is not None:
+                # Accepted but not started yet: a pause makes it start paused (a controlled
+                # stop before its first motion step); a resume cancels that.
+                self._next_paused = isinstance(msg, Pause)
                 return self._ack(envelope, msg.req_id, True)
             if r is None:
                 return self._ack(envelope, msg.req_id, False, "no run")
@@ -656,6 +695,10 @@ class SimRunner:
             # Not an arm motion: restores the fixed initial layout (LIBERO reset + init state),
             # shown to the user as the scripted "tidy the table" step (tier T3, 1.6).
             self.run = r
+            if self._start_paused:  # a protective pause arrived while it was queued: do nothing
+                self._start_paused = False
+                r.phase = "aborted"
+                return self._finish(r)
             self._publish_status(r)
             self.env.reset(self.init_index)
             self._publish_header()
@@ -666,6 +709,9 @@ class SimRunner:
 
     def _execute(self, r: _Run, meta: dict | None = None) -> RunResult:
         self.run = r
+        if self._start_paused:  # ctl.pause arrived while this run was queued
+            self._start_paused = False
+            r.pause_requested = True
         if self.record_dir is not None:
             r.recorder = EpisodeRecorder(self.record_dir / r.run_id, run_id=r.run_id, skill_id=r.skill_id,
                                          kind=r.kind, actor=r.actor, env=self.env, epoch=self.epoch, meta=meta or {})

@@ -9,8 +9,10 @@ Two routes:
 Structured output is not confirmed for Nemotron on Token Factory (7.1), so the planner tries,
 in order: `response_format` json_schema with the per-request enums, then a single tool
 `propose_options` with `tool_choice: "required"`, then `json_object` with the schema in the
-prompt; Pydantic validates every result (R1). The first mechanism that works is remembered.
-An HTTP 400 moves to the next mechanism; a schema failure goes straight to json_object
+prompt; Pydantic validates every result (R1). The first mechanism that works is remembered
+per model (the fast and plan routes use different models, which may support different
+mechanisms) and tried first next time. An HTTP 400 moves to the next mechanism in the same
+call, also when the remembered one is rejected; a schema failure goes straight to json_object
 (one retry, 7.5). Timeouts, 429s and connection errors raise PlannerError at once and start
 a backoff during which calls fail fast, so the user sees the deterministic menu without waiting.
 
@@ -47,7 +49,10 @@ class NemotronPlanner:
         # max_retries=0: our own deadline and backoff apply; the SDK must not retry behind our back.
         self.fast_client = AsyncOpenAI(base_url=cfg.tf_fast_url, api_key=key, http_client=http, max_retries=0)
         self.plan_client = AsyncOpenAI(base_url=cfg.tf_plan_url, api_key=key, http_client=http, max_retries=0)
-        self.sticky: str | None = None if cfg.planner_structured == "auto" else cfg.planner_structured
+        # A configured mechanism is the only one tried; with "auto" the one that worked last is
+        # remembered per model and tried first.
+        self.fixed: str | None = None if cfg.planner_structured == "auto" else cfg.planner_structured
+        self.sticky: dict[str, str] = {}
         self.backoff_until = 0.0
         self.backoff_s = 0.0
         self.last_error: str | None = None
@@ -99,7 +104,14 @@ class NemotronPlanner:
         context = dumps_context(req)
         t0 = time.monotonic()
         deadline = t0 + route["timeout"]
-        order = [self.sticky] if self.sticky else list(MECHANISMS)
+        model = route["model"]
+        if self.fixed:
+            order = [self.fixed]
+        elif model in self.sticky:
+            first = self.sticky[model]
+            order = [first, *(m for m in MECHANISMS if m != first)]
+        else:
+            order = list(MECHANISMS)
         last: Exception | None = None
         i = 0
         while i < len(order):
@@ -112,8 +124,8 @@ class NemotronPlanner:
             except openai.BadRequestError as exc:  # mechanism not supported by this model
                 last = exc
                 log.info("planner %s rejected %s: %s", route["model"], mech, exc)
-                if self.cfg.planner_structured == "auto" and self.sticky == mech:
-                    self.sticky = None  # try every mechanism again on the next call
+                if self.sticky.get(model) == mech:
+                    del self.sticky[model]  # no longer accepted: fall through to the others
                 i += 1
                 continue
             except PlannerError as exc:  # R1 failure: one retry with json_object (7.5)
@@ -131,8 +143,8 @@ class NemotronPlanner:
             except (openai.APIConnectionError, openai.APIStatusError) as exc:
                 self._start_backoff(type(exc).__name__)
                 raise PlannerError(f"planner unavailable: {exc}") from exc
-            if self.cfg.planner_structured == "auto":
-                self.sticky = mech
+            if not self.fixed:
+                self.sticky[model] = mech
             self.backoff_s = 0.0
             self.last_error = None
             return PlannerResult(

@@ -14,12 +14,24 @@ It never awaits, never touches the LLM, Cosmos or Token Factory. `estop.ack` (wi
 The watchdog (`watchdog_tick`, every 50 ms) relays `ctl.hb` to the sim every 100 ms only
 while the phone heartbeat is fresh and no e-stop is waiting for its sim ack, and asks the
 session for a protective pause on heartbeat loss (500 ms) or face loss (1000 ms) while
-executing.
+executing. A `ctl.estop` the sim has not acknowledged is sent again every
+`ESTOP_RESEND_MS` (the PUSH socket drops it while the sim is disconnected).
+
+Heartbeats are bound to the phone session that holds the `user` lease: `hb.resume_token`
+must be that phone's token (from its `welcome`). Heartbeats from any other device (a
+caregiver phone, a second tab, the user's previous device) never count as presence or
+freshness; a `latched` heartbeat from any device still counts as a stop.
+
+`estop.reset` is accepted only from the user-lease phone (a long blink held at least
+`min_confirm_hold_ms`, or a touch) or a caregiver phone (touch or long blink), only for the
+latest latched stop (`estop_seq` not older than the session's), and only once the sim has
+acknowledged every stop.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
@@ -33,6 +45,8 @@ log = logging.getLogger(__name__)
 # Phone wall clocks are normally NTP-synced; if the ping/pong estimate says they are off by
 # more than this, latencies are corrected with the estimate instead of trusted raw.
 CLOCK_TRUST_MS = 1000
+ESTOP_RESEND_MS = 250  # resend an unacknowledged ctl.estop this often
+RESET_GESTURES = frozenset({"long_blink", "touch"})
 
 
 @dataclass
@@ -53,9 +67,11 @@ class HbState:
 
 class SessionLike(Protocol):
     mode: str
+    client_estop_seq: int
 
     def latch_estop(self, reason: str) -> None: ...
     def reset_estop(self, msg: EStopReset) -> bool: ...
+    def refuse_reset(self, why: str) -> None: ...
     def protective_pause(self, reason: str) -> None: ...
     def on_estop_seq(self, seq: int) -> None: ...
     def on_sim_epoch(self, epoch: int) -> None: ...
@@ -79,14 +95,28 @@ class PendingEStop:
     ack: EStopAck | None = None
     sim_ack: SimEStopAck | None = None
     t_fwd_ms: float = 0.0  # gateway forward time (receive to send)
+    t_last_send: int | None = None  # gateway clock of the last ctl.estop attempt for this stop
     extra: dict = field(default_factory=dict)
 
 
 class SafetyChannel:
     def __init__(
-        self, cfg, sim: SimLike, session: SessionLike, hb: HbState, *, metrics=None, presenter=None, clock=now_ms
+        self,
+        cfg,
+        sim: SimLike,
+        session: SessionLike,
+        hb: HbState,
+        *,
+        metrics=None,
+        presenter=None,
+        clock=now_ms,
+        lease_of: Callable[[Peer | None, str | None], str] | None = None,
     ) -> None:
         self.cfg = cfg
+        # (safety peer, resume_token) -> the lease of the phone session the message belongs to:
+        # "user", "caregiver" or "none". The gateway resolves the token against its phone peers.
+        # Without a resolver (unit tests) the peer's own `lease` attribute is used.
+        self.lease_of = lease_of or (lambda peer, token: getattr(peer, "lease", "none"))
         self.sim = sim
         self.session = session
         self.hb = hb
@@ -134,6 +164,7 @@ class SafetyChannel:
         # 2. Everything else.
         p = PendingEStop(seq, peer, client_seq, source, t_rx, t_sent, self._phone_gw(t_rx, t_phone_send))
         p.t_fwd_ms = (t_sent - t_rx) if t_sent is not None else 0.0
+        p.t_last_send = t_rx
         self.pending[seq] = p
         # Record the client's number before latching, so the ESTOPPED `state` the latch sends
         # already carries it (the phone and presenter compare `state.estop_seq` with their own).
@@ -208,7 +239,30 @@ class SafetyChannel:
         """True while some e-stop has no `sim.estop_ack` yet (cleared by estop.reset)."""
         return any(p.sim_ack is None for p in self.pending.values())
 
+    def reset_refusal(self, msg: EStopReset, peer: Peer | None = None) -> str | None:
+        """Why this `estop.reset` may not clear the latch (None: it may)."""
+        lease = self.lease_of(peer, msg.resume_token)
+        if lease not in ("user", "caregiver"):
+            return "the device does not hold the session"
+        if msg.gesture not in RESET_GESTURES:
+            return f"unknown reset gesture {msg.gesture!r}"
+        if msg.gesture == "long_blink" and (msg.held_ms or 0) < self.cfg.min_confirm_hold_ms:
+            return f"long blink held {msg.held_ms} ms < {self.cfg.min_confirm_hold_ms} ms"
+        if msg.estop_seq < self.session.client_estop_seq:
+            return f"stop {msg.estop_seq} is not the latest ({self.session.client_estop_seq})"
+        if self.unacked():
+            return "the robot has not confirmed the stop yet"
+        return None
+
     def on_estop_reset(self, msg: EStopReset, peer: Peer | None = None) -> bool:
+        if self.session.mode == "ESTOPPED":
+            why = self.reset_refusal(msg, peer)
+            if why is not None:
+                log.warning("estop.reset refused: %s", why)
+                if self.presenter is not None:
+                    self.presenter.trace("estop", None, {"reset": "refused", "reason": why, "estop_seq": msg.estop_seq})
+                self.session.refuse_reset(why)
+                return False
         if self.session.reset_estop(msg):
             self.handled.clear()
             self.pending.clear()
@@ -220,6 +274,14 @@ class SafetyChannel:
 
     def on_hb(self, msg: Heartbeat, peer: Peer | None = None) -> None:
         now = self.clock()
+        # The phone says it is latched but the gateway is not (a lost estop, or a gateway restart):
+        # latch too. Any device's latch counts. Ignored briefly after a reset, while older
+        # heartbeats are still in flight.
+        if msg.latched and self.session.mode != "ESTOPPED" and now - self.reset_at_ms > 500:
+            self._trigger(peer, None, "latched_hb", now, msg.ts)
+        # Presence and freshness come only from the phone holding the user lease (5.6, R9).
+        if self.lease_of(peer, msg.resume_token) != "user":
+            return
         self.hb.last_hb_ms = now
         self.hb.track_conf, self.hb.fps = msg.track_conf, msg.fps
         if msg.face_present:
@@ -228,10 +290,6 @@ class SafetyChannel:
             self.hb.face_absent_since_ms = now
         self.hb.face_present = msg.face_present
         self.hb.latched = msg.latched
-        # The phone says it is latched but the gateway is not (a lost estop, or a gateway restart):
-        # latch too. Ignored briefly after a reset, while older heartbeats are still in flight.
-        if msg.latched and self.session.mode != "ESTOPPED" and now - self.reset_at_ms > 500:
-            self._trigger(peer, None, "latched_hb", now, msg.ts)
 
     def on_ping_sample(self, t0_phone: int, t_rx: int) -> None:
         """Keep min(t_rx - t0): gateway minus phone clock plus the smallest uplink delay."""
@@ -263,3 +321,13 @@ class SafetyChannel:
         for p in list(self.pending.values()):
             if not p.acked and now - p.t_rx >= self.cfg.estop_ack_wait_ms:
                 self._ack(p, LatMs(phone_gw=p.phone_gw_ms, gw_sim=None, sim_halt=None), None)
+            # Keep sending ctl.estop until the sim confirms it (it is dropped while the sim is
+            # disconnected). The sim treats a repeat as a duplicate when nothing is moving.
+            if p.sim_ack is None and now - (p.t_last_send or p.t_rx) >= ESTOP_RESEND_MS:
+                p.t_last_send = now
+                try:
+                    self.sim.estop(p.gw_seq)
+                    if p.t_sent is None:
+                        p.t_sent = self.clock()
+                except Exception as exc:
+                    log.debug("ctl.estop resend failed: %s", exc)

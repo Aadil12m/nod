@@ -142,7 +142,7 @@ async def test_plan_step_runs_on_real_sim_then_estop_aborts(tmp_path, real_sim):
         assert st["estop_seq"] == 1
 
         # Reset: back to IDLE; the sim stays idle and the run is never resumed.
-        await safety.send("estop.reset", estop_seq=1, gesture="long_blink", held_ms=820)
+        await safety.send("estop.reset", estop_seq=1, gesture="long_blink", held_ms=820, resume_token=rig.token)
         await phone.wait_type("state", mode="IDLE")
         n = len(phone.msgs)
         await asyncio.sleep(1.0)

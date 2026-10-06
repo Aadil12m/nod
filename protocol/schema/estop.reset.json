@@ -1,6 +1,7 @@
 {
   "$id": "https://nod.invalid/schema/estop.reset.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Clears the latched stop `estop_seq` (the latest one the phone knows of). Accepted only\nfrom the phone holding the `user` lease (long blink of at least the minimum hold, or a\ncaregiver touch on that phone) or a `caregiver` phone, identified by `resume_token`.",
   "properties": {
     "estop_seq": {
       "title": "Estop Seq",
@@ -25,6 +26,18 @@
     "id": {
       "title": "Id",
       "type": "string"
+    },
+    "resume_token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resume Token"
     },
     "seq": {
       "default": 0,
@@ -68,7 +81,8 @@
     "seq",
     "estop_seq",
     "gesture",
-    "held_ms"
+    "held_ms",
+    "resume_token"
   ],
   "title": "EStopReset",
   "type": "object"

@@ -83,11 +83,16 @@ export const msg = {
   utterText: (utt_id, text) => ['utter.text', { utt_id, text: String(text) }],
   ping: (t0 = Date.now()) => ['ping', { t0: int(t0) }],
   // ------------------------------------------------------------ /ws/safety (3.5.2)
-  hb: ({ face_present, track_conf, fps, latched }) => ['hb', {
+  // resume_token (from `welcome` on /ws/phone) binds the heartbeat and the reset to this phone's
+  // session: the gateway counts presence only from the phone holding the user lease.
+  hb: ({ face_present, track_conf, fps, latched, resume_token = null }) => ['hb', {
     face_present: !!face_present, track_conf: num(track_conf) ?? 0, fps: num(fps) ?? 0, latched: !!latched,
+    resume_token: resume_token ?? null,
   }],
   estop: ({ estop_seq, source, t_detect, held_ms = null }) => ['estop', { estop_seq, source, t_detect: int(t_detect), held_ms: int(held_ms) }],
-  estopReset: ({ estop_seq, gesture, held_ms = null }) => ['estop.reset', { estop_seq, gesture, held_ms: int(held_ms) }],
+  estopReset: ({ estop_seq, gesture, held_ms = null, resume_token = null }) => ['estop.reset', {
+    estop_seq, gesture, held_ms: int(held_ms), resume_token: resume_token ?? null,
+  }],
 };
 
 export const ESTOP_SOURCES = ['jaw_hold', 'voice_stop', 'button', 'presenter'];

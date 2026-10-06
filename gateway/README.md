@@ -6,10 +6,13 @@ ASR, Cosmos and Home Assistant clients, and the presenter feed.
 
 ## Setup
 
+From the repository root, `make setup-gateway` does this. By hand, with
+[uv](https://docs.astral.sh/uv/) on your PATH:
+
 ```
 cd gateway
-/root/.local/bin/uv venv -p 3.11 .venv
-/root/.local/bin/uv pip install -p .venv/bin/python -e "../protocol[numpy,fast]" -e ".[test]"
+uv venv -p 3.11 .venv
+uv pip install -p .venv/bin/python -e "../protocol[numpy,fast]" -e ".[test]"
 ```
 
 Add the `asr` extra (`-e ".[asr]"`) on a machine that should run Parakeet through onnx-asr.

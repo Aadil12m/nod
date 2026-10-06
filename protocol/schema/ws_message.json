@@ -514,6 +514,7 @@
       "type": "object"
     },
     "EStopReset": {
+      "description": "Clears the latched stop `estop_seq` (the latest one the phone knows of). Accepted only\nfrom the phone holding the `user` lease (long blink of at least the minimum hold, or a\ncaregiver touch on that phone) or a `caregiver` phone, identified by `resume_token`.",
       "properties": {
         "estop_seq": {
           "title": "Estop Seq",
@@ -538,6 +539,18 @@
         "id": {
           "title": "Id",
           "type": "string"
+        },
+        "resume_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resume Token"
         },
         "seq": {
           "default": 0,
@@ -581,7 +594,8 @@
         "seq",
         "estop_seq",
         "gesture",
-        "held_ms"
+        "held_ms",
+        "resume_token"
       ],
       "title": "EStopReset",
       "type": "object"
@@ -770,7 +784,7 @@
       "type": "object"
     },
     "Heartbeat": {
-      "description": "Sent every 100 ms on /ws/safety.",
+      "description": "Sent every 100 ms on /ws/safety.\n\n`resume_token` is the token from this phone's `welcome` on /ws/phone. It binds the\nheartbeat to the phone session: only the heartbeat of the phone holding the `user` lease\nfeeds the watchdogs and the R9 face check (a `latched` heartbeat from any device still\ncounts as a stop). None until the phone has been welcomed.",
       "properties": {
         "face_present": {
           "title": "Face Present",
@@ -787,6 +801,18 @@
         "latched": {
           "title": "Latched",
           "type": "boolean"
+        },
+        "resume_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resume Token"
         },
         "seq": {
           "default": 0,
@@ -835,7 +861,8 @@
         "face_present",
         "track_conf",
         "fps",
-        "latched"
+        "latched",
+        "resume_token"
       ],
       "title": "Heartbeat",
       "type": "object"
