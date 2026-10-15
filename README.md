@@ -187,6 +187,33 @@ model and TF.js from jsdelivr and Google storage unless `make vendor` copied the
 
 The screenshots come from the full mock end-to-end test (`make screenshots`).
 
+## Laptop mode: the real scene on a CPU, at zero cost
+
+This is the setup our demo uses. The real LIBERO-Goal scene (MuJoCo) runs on an ordinary laptop
+CPU, and a scripted waypoint controller moves the arm (design tier T4). Nemotron plans on Nebius
+Token Factory, paid from the free hackathon credits. No GPU is used anywhere.
+
+```bash
+# once: the CPU LIBERO venv (sim/README.md), then measure the scripted arm on the real scene
+make eval-scripted                   # writes registry/stats/scripted.json
+export NEBIUS_API_KEY=...            # Token Factory key; without it the phone shows a fixed menu
+make laptop                          # http://localhost:8000 (phone) and /presenter
+```
+
+Measured on the real scene (CPU, 20 episodes each, `registry/stats/scripted.json`):
+
+| Skill | Success |
+|---|---|
+| Put the bowl on the plate, cream cheese in the bowl, bring the bowl to me, bowl on the stove, bottle on the cabinet | 20/20 each |
+| Bowl on top of the cabinet | 18/20 |
+| Bottle on the rack | 17/20 |
+| Snack chain (bowl on plate, cheese in bowl, bring it to me), one session, no reset | 20/20 |
+
+The drawer, plate push, stove knob and top-drawer skills have no working scripted controller,
+so they have no measurements and the validator hides them (rule R6). The arm in this mode is
+scripted, not learned, and the phone and presenter say so. GR00T N1.7 is the drop-in learned
+actor (`--actor policy`), and running it needs a GPU (see Live mode).
+
 ## Live mode
 
 Live mode runs on one Nebius RTX PRO 6000 VM in uk-south2 with `docker compose --profile live`.

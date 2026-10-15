@@ -119,6 +119,15 @@ smoke: | $(GW_PY) ## start the mock gateway as a process and probe its HTTP endp
 mock: ## mock mode without Docker: gateway (and viewer if available) on http://localhost:8000
 	UV=$(UV) infra/scripts/mock.sh
 
+laptop: ## zero-cost live mode: real LIBERO sim (scripted arm) on CPU + Nemotron on Token Factory
+	UV=$(UV) infra/scripts/laptop.sh
+
+eval-scripted: ## measure the scripted arm on the real scene (CPU) and write registry/stats/scripted.json
+	LIBERO_CONFIG_PATH=$(CURDIR)/sim/.venv-libero/libero_config MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa \
+	  sim/.venv-libero/bin/python -m nod_eval.run --registry registry/skills.yaml --episodes 20 --chains A,B \
+	  --out results/scripted --actor scripted --lazy-cameras
+	sim/.venv-libero/bin/python -m nod_eval.publish --in results/scripted --out registry/stats/scripted.json
+
 mock-docker: ## mock mode with Docker Compose
 	docker compose --profile mock up --build
 

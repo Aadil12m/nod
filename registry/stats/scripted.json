@@ -1,0 +1,122 @@
+{
+  "_note": "actor: scripted waypoint controllers (tier T4), not GR00T. chain A truncated to ['bottle_on_rack']: open_middle_drawer cannot run with this actor. skipped: bowl_in_top_drawer (no scripted controller (or not allowed)); open_middle_drawer (no scripted controller (or not allowed)); plate_to_stove_front (no scripted controller (or not allowed)); stove_on (no scripted controller (or not allowed))",
+  "at": "2026-10-15T22:14:14Z",
+  "bottle_on_cabinet": {
+    "alone": {
+      "k": 20,
+      "median_s": 9.95,
+      "n": 20,
+      "wilson_lo": 0.8389
+    }
+  },
+  "bottle_on_rack": {
+    "alone": {
+      "k": 17,
+      "median_s": 8.8,
+      "n": 20,
+      "wilson_lo": 0.6396
+    }
+  },
+  "bowl_on_cabinet": {
+    "alone": {
+      "k": 18,
+      "median_s": 9.57,
+      "n": 20,
+      "wilson_lo": 0.699
+    }
+  },
+  "bowl_on_plate": {
+    "alone": {
+      "k": 20,
+      "median_s": 6.07,
+      "n": 20,
+      "wilson_lo": 0.8389
+    }
+  },
+  "bowl_on_stove": {
+    "alone": {
+      "k": 20,
+      "median_s": 6.3,
+      "n": 20,
+      "wilson_lo": 0.8389
+    }
+  },
+  "bowl_to_user": {
+    "alone": {
+      "k": 20,
+      "median_s": 10.2,
+      "n": 20,
+      "wilson_lo": 0.8389
+    },
+    "in_chain": {
+      "k": 20,
+      "median_s": 10.88,
+      "n": 20,
+      "wilson_lo": 0.8389
+    }
+  },
+  "chains": {
+    "A": {
+      "k": 20,
+      "median_s": 8.75,
+      "n": 20,
+      "skill_ids": [
+        "bottle_on_rack"
+      ],
+      "steps": [
+        {
+          "k": 20,
+          "median_s": 8.75,
+          "n": 20,
+          "wilson_lo": 0.8389
+        }
+      ],
+      "wilson_lo": 0.8389
+    },
+    "B": {
+      "k": 20,
+      "median_s": 27.3,
+      "n": 20,
+      "skill_ids": [
+        "bowl_on_plate",
+        "cheese_in_bowl",
+        "bowl_to_user"
+      ],
+      "steps": [
+        {
+          "k": 20,
+          "median_s": 6.07,
+          "n": 20,
+          "wilson_lo": 0.8389
+        },
+        {
+          "k": 20,
+          "median_s": 6.5,
+          "n": 20,
+          "wilson_lo": 0.8389
+        },
+        {
+          "k": 20,
+          "median_s": 10.88,
+          "n": 20,
+          "wilson_lo": 0.8389
+        }
+      ],
+      "wilson_lo": 0.8389
+    }
+  },
+  "cheese_in_bowl": {
+    "alone": {
+      "k": 20,
+      "median_s": 7.18,
+      "n": 20,
+      "wilson_lo": 0.8389
+    },
+    "in_chain": {
+      "k": 20,
+      "median_s": 6.5,
+      "n": 20,
+      "wilson_lo": 0.8389
+    }
+  }
+}
