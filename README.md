@@ -142,7 +142,7 @@ recorded runs (or a scripted timeline before any recordings exist).
 With Docker:
 
 ```bash
-git clone https://github.com/<team>/nod && cd nod     # TODO: the public repo URL
+git clone https://github.com/Aadil12m/nod && cd nod
 make fetch-mock          # optional: recorded runs and the 3D scene from the GitHub release
 docker compose --profile mock up --build
 ```

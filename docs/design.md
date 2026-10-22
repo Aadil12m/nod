@@ -653,7 +653,7 @@ def render(env, camera: str, w: int, h: int) -> np.ndarray        # env._env.sim
 The judge or developer quickstart:
 
 ```bash
-git clone https://github.com/<team>/nod && cd nod
+git clone https://github.com/Aadil12m/nod && cd nod
 make fetch-mock        # downloads recordings/ + scene .mjb from the GitHub release (about 30-60 MB, [unverified size])
 docker compose --profile mock up --build
 # open http://localhost:8000          (laptop webcam works: localhost is a secure context)
