@@ -193,12 +193,16 @@ This is the setup our demo uses. The real LIBERO-Goal scene (MuJoCo) runs on an 
 CPU, and a scripted waypoint controller moves the arm (design tier T4). Nemotron plans on Nebius
 Token Factory, paid from the free hackathon credits. No GPU is used anywhere.
 
+On Linux (Ubuntu or Debian; about 3 GB of disk, Python 3.11 is fetched by uv):
+
 ```bash
-# once: the CPU LIBERO venv (sim/README.md), then measure the scripted arm on the real scene
-make eval-scripted                   # writes registry/stats/scripted.json
+git clone https://github.com/Aadil12m/nod && cd nod
+infra/scripts/setup_laptop.sh        # once: uv, OSMesa (asks for sudo), the venvs, the 3D scene
 export NEBIUS_API_KEY=...            # Token Factory key; without it the phone shows a fixed menu
 make laptop                          # http://localhost:8000 (phone) and /presenter
 ```
+
+The measured stats ship in `registry/stats/scripted.json`; `make eval-scripted` re-measures them.
 
 Measured on the real scene (CPU, 20 episodes each, `registry/stats/scripted.json`):
 
