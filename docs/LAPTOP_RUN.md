@@ -103,7 +103,7 @@ cheese in bowl, bring it to me) 20/20. Drawer, plate push and stove knob are hid
 4. Run the full snack chain once without stopping.
 
 If any step fails, read the terminal output of `make laptop` and the newest folder in
-`gateway/runs/`, fix the cause, and run `make -k test` before committing. Push fixes to `main`.
+`runs/`, fix the cause, and run `make -k test` before committing. Push fixes to `main`.
 
 ## 6. The video (under 3 minutes, YouTube)
 
